@@ -3,36 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>USTA 🧱 СКЛАД</title>
+  <title>🧱 СКЛАД УСТА 🧱</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { background:#0a0a0a; color:#fff; font-family:sans-serif; padding:20px; }
-    input, button { width:100%; padding:15px; margin:10px 0; font-size:18px; border-radius:8px; border:none; }
-    input { background:#1a1a1a; color:#fff; }
-    button { background:#ff4d00; color:#000; font-weight:900; }
-    #status { margin-top:20px; font-weight:bold; }
+    body { background:#0a0a0a; color:#fff; font-family:sans-serif; padding:20px; max-width:600px; margin:0 auto; }
+    h1 { color:#ff4d00; text-align:center; }
+    input, select, button { width:100%; padding:15px; margin:8px 0; font-size:18px; border-radius:8px; border:1px solid #333; box-sizing:border-box; }
+    input, select { background:#1a1a1a; color:#fff; }
+    button { background:#ff4d00; color:#000; font-weight:900; border:none; cursor:pointer; }
+    #status { margin:20px 0; font-weight:bold; text-align:center; min-height:24px; }
+    .zapis { background:#1a1a1a; padding:12px; margin:8px 0; border-radius:8px; border-left:4px solid #ff4d00; }
+    .zapis-time { color:#888; font-size:14px; }
+    h2 { margin-top:30px; border-bottom:2px solid #333; padding-bottom:10px; }
   </style>
 </head>
 <body>
-  <h1>USTA 🧱 СКЛАД</h1>
-  <input id="zapis" placeholder="Товар Кол-во Цех" />
+  <h1>🧱 СКЛАД УСТА 🧱</h1>
+  <input id="tovar" placeholder="Товар" />
+  <input id="kolvo" type="number" placeholder="Кол-во" />
+  <select id="edinica">
+    <option value="кг">кг</option>
+    <option value="шт">шт</option>
+    <option value="л">л</option>
+    <option value="уп">уп</option>
+  </select>
+  <select id="ceh">
+    <option value="Овощной">Овощной</option>
+    <option value="Мясной">Мясной</option>
+    <option value="Молочный">Молочный</option>
+    <option value="Бакалея">Бакалея</option>
+    <option value="Заморозка">Заморозка</option>
+  </select>
   <button onclick="add()">[ДОБАВИТЬ НА СКЛАД]</button>
   <div id="status"></div>
+  
+  <h2>Последние 10 записей:</h2>
+  <div id="list"></div>
 
 <script>
-  // ВСТАВЬ СВОИ ДАННЫЕ СЮДА
-  const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_c6VHXNNPEEopejxL_W8tdA_YoGQROfD';
+  const SUPABASE_URL = 'ВСТАВЬ_СЮДА_COPY_API_URL';
+  const SUPABASE_KEY = 'ВСТАВЬ_СЮДА_COPY_PUBLISHABLE_KEY';
   
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const status = document.getElementById('status');
+  const list = document.getElementById('list');
+
+  // Грузим записи при старте
+  load();
 
   async function add() {
-    const zapis = document.getElementById('zapis').value;
-    if (!zapis) return status.innerText = 'ЗАПОЛНИ ПОЛЕ, УСТА 🧱';
+    const tovar = document.getElementById('tovar').value;
+    const kolvo = document.getElementById('kolvo').value;
+    const edinica = document.getElementById('edinica').value;
+    const ceh = document.getElementById('ceh').value;
     
+    if (!tovar || !kolvo) return status.innerText = 'ЗАПОЛНИ ТОВАР И КОЛ-ВО, УСТА 🧱';
+    
+    status.style.color = '#fff';
     status.innerText = 'ОТПРАВЛЯЮ...';
-    const { error } = await db.from('sklad_zapisi').insert({ zapis: zapis });
+    
+    const { error } = await db.from('sklad_zapisi').insert({ 
+      tovar: tovar, 
+      kolvo: kolvo, 
+      edinica: edinica, 
+      ceh: ceh 
+    });
     
     if (error) {
       status.style.color = '#ff3b30';
@@ -40,8 +75,34 @@
     } else {
       status.style.color = '#30d158';
       status.innerText = 'УСТА 🧱 ЗАПИСАЛ 🧱';
-      document.getElementById('zapis').value = '';
+      document.getElementById('tovar').value = '';
+      document.getElementById('kolvo').value = '';
+      load(); // Обновляем список
     }
+  }
+
+  async function load() {
+    const { data, error } = await db.from('sklad_zapisi')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (error) {
+      list.innerHTML = 'ОШИБКА ЗАГРУЗКИ: ' + error.message;
+      return;
+    }
+    
+    if (data.length === 0) {
+      list.innerHTML = 'ЗАПИСЕЙ ПОКА НЕТ 🧱';
+      return;
+    }
+
+    list.innerHTML = data.map(r => `
+      <div class="zapis">
+        <b>${r.tovar}</b> — ${r.kolvo} ${r.edinica} | ${r.ceh}
+        <div class="zapis-time">${new Date(r.created_at).toLocaleString('ru-RU')}</div>
+      </div>
+    `).join('');
   }
 </script>
 </body>
