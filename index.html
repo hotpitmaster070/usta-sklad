@@ -3,83 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>СКЛАД УСТА</title>
+  <title>USTA 🧱 СКЛАД</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { background: #1a1a1a; color: #fff; font-family: Arial; padding: 20px; margin: 0; }
-    h1 { color: #ff6b35; text-align: center; font-size: 28px; margin-bottom: 25px; }
-    input, select { 
-      width: 100%; padding: 16px; margin: 8px 0; 
-      background: #2a2a2a; color: #fff; border: 2px solid #444; 
-      font-size: 18px; border-radius: 10px; box-sizing: border-box;
-    }
-    input:focus, select:focus { border-color: #ff6b35; outline: none; }
-    button { 
-      width: 100%; padding: 20px; background: #ff6b35; 
-      color: #fff; border: none; font-size: 22px; 
-      font-weight: bold; margin-top: 20px; border-radius: 10px;
-    }
-    button:active { background: #e55a2b; }
-    #status { text-align: center; margin-top: 15px; font-size: 18px; min-height: 25px; font-weight: bold; }
+    body { background:#0a0a0a; color:#fff; font-family:sans-serif; padding:20px; }
+    input, button { width:100%; padding:15px; margin:10px 0; font-size:18px; border-radius:8px; border:none; }
+    input { background:#1a1a1a; color:#fff; }
+    button { background:#ff4d00; color:#000; font-weight:900; }
+    #status { margin-top:20px; font-weight:bold; }
   </style>
 </head>
 <body>
-  <h1>🧱 СКЛАД УСТА 🧱</h1>
-  
-  <input type="text" id="nazvanie" placeholder="Название: Лук">
-  <input type="number" id="kolvo" placeholder="Количество: 30">
-  <select id="ed">
-    <option value="кг">кг</option>
-    <option value="шт">шт</option>
-    <option value="л">л</option>
-    <option value="упак">упак</option>
-  </select>
-  <select id="tip">
-    <option value="Овощной">Овощной</option>
-    <option value="Мясной">Мясной</option>
-    <option value="Молочка">Молочка</option>
-    <option value="Бакалея">Бакалея</option>
-    <option value="Химия">Химия</option>
-    <option value="Прочее">Прочее</option>
-  </select>
-  
-  <button onclick="save()">[ДОБАВИТЬ НА СКЛАД]</button>
-  <p id="status"></p>
+  <h1>USTA 🧱 СКЛАД</h1>
+  <input id="zapis" placeholder="Товар Кол-во Цех" />
+  <button onclick="add()">[ДОБАВИТЬ НА СКЛАД]</button>
+  <div id="status"></div>
 
-  <script>
-    // ТВОИ КЛЮЧИ ИЗ SUPABASE
-    const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_c6VHXNNPEEopejxL_W8tdA_YoGQROfD';
-    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+  // ВСТАВЬ СВОИ ДАННЫЕ СЮДА
+  const SUPABASE_URL = 'ВСТАВЬ_СЮДА_COPY_API_URL';
+  const SUPABASE_KEY = 'ВСТАВЬ_СЮДА_COPY_PUBLISHABLE_KEY';
+  
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const status = document.getElementById('status');
 
-    async function save() {
-      const nazvanie = document.getElementById('nazvanie').value.trim();
-      const kolvo = document.getElementById('kolvo').value.trim();
-      const ed = document.getElementById('ed').value;
-      const tip = document.getElementById('tip').value;
-      
-      if (!nazvanie || !kolvo) {
-        document.getElementById('status').innerText = 'Заполни название и количество 🧱';
-        document.getElementById('status').style.color = '#ff6b35';
-        return;
-      }
-      
-      const text = `${nazvanie} ${kolvo} ${ed}, ${tip}`;
-      document.getElementById('status').innerText = 'Сохраняю...';
-      document.getElementById('status').style.color = '#fff';
-      
-      const { error } = await db.from('sklad_zapisi').insert({ zapis: text });
-      
-      if (error) {
-        document.getElementById('status').innerText = 'ОШИБКА: ' + error.message;
-        document.getElementById('status').style.color = '#ff4444';
-      } else {
-        document.getElementById('status').innerText = 'УСТА 🧱 ЗАПИСАЛ 🧱';
-        document.getElementById('status').style.color = '#44ff44';
-        document.getElementById('nazvanie').value = '';
-        document.getElementById('kolvo').value = '';
-      }
+  async function add() {
+    const zapis = document.getElementById('zapis').value;
+    if (!zapis) return status.innerText = 'ЗАПОЛНИ ПОЛЕ, УСТА 🧱';
+    
+    status.innerText = 'ОТПРАВЛЯЮ...';
+    const { error } = await db.from('sklad_zapisi').insert({ zapis: zapis });
+    
+    if (error) {
+      status.style.color = '#ff3b30';
+      status.innerText = 'ОШИБКА: ' + error.message;
+    } else {
+      status.style.color = '#30d158';
+      status.innerText = 'УСТА 🧱 ЗАПИСАЛ 🧱';
+      document.getElementById('zapis').value = '';
     }
-  </script>
+  }
+</script>
 </body>
 </html>
