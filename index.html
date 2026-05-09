@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ШТАБ УСТА: СКЛАД</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial; background: #1a1a1a; color: #fff; padding: 20px; max-width: 400px; margin: 0 auto; }
+        h1 { color: #ff4d00; text-align: center; }
+        input, select, button { width: 100%; padding: 15px; margin: 8px 0; font-size: 18px; border-radius: 8px; border: none; }
+        button { background: #ff4d00; color: #fff; font-weight: bold; }
+        #status { margin-top: 20px; padding: 15px; border-radius: 8px; text-align: center; }
+        .ok { background: #0f5d2c; }
+        .error { background: #5d0f0f; }
+    </style>
+</head>
+<body>
+    <h1>🧱 СКЛАД УСТА 🧱</h1>
+    <input type="text" id="item_name" placeholder="Название товара: Лук">
+    <input type="number" id="quantity" placeholder="Кол-во: 30">
+    <select id="unit">
+        <option value="кг">кг</option>
+        <option value="шт">шт</option>
+        <option value="л">л</option>
+    </select>
+    <select id="storage_type">
+        <option value="Морозилка">Морозилка</option>
+        <option value="Сухой склад">Сухой склад</option>
+        <option value="Овощной">Овощной</option>
+    </select>
+    <button onclick="addToSklad()">[ДОБАВИТЬ НА СКЛАД]</button>
+    <div id="status"></div>
+
+<script>
+    // ЗАМЕНИ ЭТИ 2 СТРОКИ НА СВОИ ДАННЫЕ ИЗ SUPABASE
+    const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_c6VHXNNPEEopejxL_W8tdA_YoGQROfD';
+const CLIENT_ID = 'e4606028-176c-4b94-b021-2fc67992f8b5';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function addToSklad() {
+        const item_name = document.getElementById('item_name').value;
+        const quantity = document.getElementById('quantity').value;
+        const unit = document.getElementById('unit').value;
+        const storage_type = document.getElementById('storage_type').value;
+        const status = document.getElementById('status');
+
+        if (!item_name || !quantity) {
+            status.className = 'error';
+            status.innerText = 'ЗАПОЛНИ НАЗВАНИЕ И КОЛ-ВО, УСТА';
+            return;
+        }
+
+        const { error } = await supabase.from('sklad').insert([{
+            client_id: CLIENT_ID,
+            item_name: item_name,
+            quantity: quantity,
+            unit: unit,
+            storage_type: storage_type,
+            who_did_it: 'Уста'
+        }]);
+
+        if (error) {
+            status.className = 'error';
+            status.innerText = 'ОШИБКА: ' + error.message;
+        } else {
+            status.className = 'ok';
+            status.innerText = `ГОТОВО 🧱 ${item_name} ${quantity} ${unit} НА СКЛАДЕ`;
+            document.getElementById('item_name').value = '';
+            document.getElementById('quantity').value = '';
+        }
+    }
+</script>
+</body>
+</html>
