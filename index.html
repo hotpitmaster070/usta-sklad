@@ -3,107 +3,96 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧱 СКЛАД УСТА 🧱</title>
+  <title>ШТАБ УСТА</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { background:#0a0a0a; color:#fff; font-family:sans-serif; padding:20px; max-width:600px; margin:0 auto; }
-    h1 { color:#ff4d00; text-align:center; }
-    input, select, button { width:100%; padding:15px; margin:8px 0; font-size:18px; border-radius:8px; border:1px solid #333; box-sizing:border-box; }
-    input, select { background:#1a1a1a; color:#fff; }
-    button { background:#ff4d00; color:#000; font-weight:900; border:none; cursor:pointer; }
-    #status { margin:20px 0; font-weight:bold; text-align:center; min-height:24px; }
-    .zapis { background:#1a1a1a; padding:12px; margin:8px 0; border-radius:8px; border-left:4px solid #ff4d00; }
-    .zapis-time { color:#888; font-size:14px; }
-    h2 { margin-top:30px; border-bottom:2px solid #333; padding-bottom:10px; }
+    body { font-family: -apple-system, sans-serif; background: #1a1a1a; color: #fff; margin: 0; padding: 20px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .btn { background: #ff3b30; color: #fff; border: none; padding: 18px; margin: 8px 0; width: 100%; font-size: 18px; font-weight: bold; border-radius: 12px; }
+    .btn-green { background: #34c759; }
+    .btn-grey { background: #48484a; }
+    input, select { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
+    h1 { text-align: center; }
+    .plan-percent { font-size: 72px; font-weight: 900; text-align: center; margin: 20px 0; color: #34c759; }
+    .povar-list button { background: #2c2c2e; }
   </style>
 </head>
 <body>
-  <h1>🧱 СКЛАД УСТА 🧱</h1>
-  <input id="tovar" placeholder="Товар" />
-  <input id="kolvo" type="number" placeholder="Кол-во" />
-  <select id="edinica">
-    <option value="кг">кг</option>
-    <option value="шт">шт</option>
-    <option value="л">л</option>
-    <option value="уп">уп</option>
-  </select>
-  <select id="ceh">
-    <option value="Овощной">Овощной</option>
-    <option value="Мясной">Мясной</option>
-    <option value="Молочный">Молочный</option>
-    <option value="Бакалея">Бакалея</option>
-    <option value="Заморозка">Заморозка</option>
-  </select>
-  <button onclick="add()">[ДОБАВИТЬ НА СКЛАД]</button>
-  <div id="status"></div>
-  
-  <h2>Последние 10 записей:</h2>
-  <div id="list"></div>
+
+<div id="login" class="screen active">
+  <h1>ШТАБ УСТА 🧱</h1>
+  <input id="pin" type="password" placeholder="ПИН для входа" />
+  <button class="btn" onclick="login()">ВОЙТИ</button>
+</div>
+
+<div id="shef" class="screen">
+  <h1>Экран Шефа 🧱</h1>
+  <button class="btn" onclick="alert('Форма Прихода')">1. [+ ПРИХОД ТОВАРА]</button>
+  <button class="btn" onclick="alert('Форма Задания')">2. [СОЗДАТЬ ЗАДАНИЕ]</button>
+  <button class="btn" onclick="alert('Экран Склада')">4. [МОЙ СКЛАД]</button>
+  <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
+</div>
+
+<div id="povar_select" class="screen">
+  <h1>Ты кто?</h1>
+  <div id="povar_list" class="povar-list"></div>
+  <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
+</div>
+
+<div id="povar" class="screen">
+  <h1 id="povar_name"></h1>
+  <button class="btn" onclick="alert('Форма: Взял со склада')">ВЗЯТЬ СО СКЛАДА</button>
+  <button class="btn" onclick="alert('Список заданий')">МОИ ЗАДАНИЯ</button>
+  <button class="btn" onclick="alert('Форма: Вернуть на склад')">ВЕРНУТЬ НА СКЛАД</button>
+  <button class="btn btn-grey" onclick="showScreen('povar_select')">СМЕНИТЬ ПОВАРА</button>
+</div>
 
 <script>
-  const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_c6VHXNNPEEopejxL_W8tdA_YoGQROfD';
-  
-  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  const status = document.getElementById('status');
-  const list = document.getElementById('list');
+  const SUPABASE_URL = 'ТВОЙ_URL';
+  const SUPABASE_ANON_KEY = 'ТВОЙ_ANON_KEY';
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let currentUser = null;
 
-  // Грузим записи при старте
-  load();
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
 
-  async function add() {
-    const tovar = document.getElementById('tovar').value;
-    const kolvo = document.getElementById('kolvo').value;
-    const edinica = document.getElementById('edinica').value;
-    const ceh = document.getElementById('ceh').value;
+  async function login() {
+    const pin = document.getElementById('pin').value;
+    const { data } = await db.from('users').select().eq('pin', pin).single();
+    if (!data) return alert('Неверный ПИН');
     
-    if (!tovar || !kolvo) return status.innerText = 'ЗАПОЛНИ ТОВАР И КОЛ-ВО, УСТА 🧱';
-    
-    status.style.color = '#fff';
-    status.innerText = 'ОТПРАВЛЯЮ...';
-    
-    const { error } = await db.from('sklad_zapisi').insert({ 
-      tovar: tovar, 
-      kolvo: kolvo, 
-      edinica: edinica, 
-      ceh: ceh 
-    });
-    
-    if (error) {
-      status.style.color = '#ff3b30';
-      status.innerText = 'ОШИБКА: ' + error.message;
+    currentUser = data;
+    if (data.role === 'shef') {
+      showScreen('shef');
     } else {
-      status.style.color = '#30d158';
-      status.innerText = 'УСТА 🧱 ЗАПИСАЛ 🧱';
-      document.getElementById('tovar').value = '';
-      document.getElementById('kolvo').value = '';
-      load(); // Обновляем список
+      loadPovarSelect();
     }
   }
 
-  async function load() {
-    const { data, error } = await db.from('sklad_zapisi')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
-    
-    if (error) {
-      list.innerHTML = 'ОШИБКА ЗАГРУЗКИ: ' + error.message;
-      return;
-    }
-    
-    if (data.length === 0) {
-      list.innerHTML = 'ЗАПИСЕЙ ПОКА НЕТ 🧱';
-      return;
-    }
+  async function loadPovarSelect() {
+    const { data } = await db.from('users').select().eq('role', 'povar');
+    const list = document.getElementById('povar_list');
+    list.innerHTML = '';
+    data.forEach(p => {
+      list.innerHTML += `<button class="btn" onclick="selectPovar('${p.name}')">${p.name}</button>`;
+    });
+    showScreen('povar_select');
+  }
 
-    list.innerHTML = data.map(r => `
-      <div class="zapis">
-        <b>${r.tovar}</b> — ${r.kolvo} ${r.edinica} | ${r.ceh}
-        <div class="zapis-time">${new Date(r.created_at).toLocaleString('ru-RU')}</div>
-      </div>
-    `).join('');
+  function selectPovar(name) {
+    document.getElementById('povar_name').innerText = `Цех: ${name}`;
+    showScreen('povar');
+  }
+
+  function logout() {
+    currentUser = null;
+    document.getElementById('pin').value = '';
+    showScreen('login');
   }
 </script>
+
 </body>
 </html>
