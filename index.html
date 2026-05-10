@@ -13,9 +13,8 @@
     .btn-green { background: #34c759; }
     .btn-grey { background: #48484a; }
     input, select { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
-    h1 { text-align: center; }
-    .plan-percent { font-size: 72px; font-weight: 900; text-align: center; margin: 20px 0; color: #34c759; }
-    .povar-list button { background: #2c2c2e; }
+    h1, h2 { text-align: center; }
+    label { display: block; margin-top: 12px; color: #8e8e93; }
   </style>
 </head>
 <body>
@@ -28,10 +27,22 @@
 
 <div id="shef" class="screen">
   <h1>Экран Шефа 🧱</h1>
-  <button class="btn" onclick="alert('Форма Прихода')">1. [+ ПРИХОД ТОВАРА]</button>
-  <button class="btn" onclick="alert('Форма Задания')">2. [СОЗДАТЬ ЗАДАНИЕ]</button>
-  <button class="btn" onclick="alert('Экран Склада')">4. [МОЙ СКЛАД]</button>
+  <button class="btn" onclick="showScreen('prihod_form')">1. [+ ПРИХОД ТОВАРА]</button>
+  <button class="btn" onclick="alert('Форма Задания - Вечер 3')">2. [СОЗДАТЬ ЗАДАНИЕ]</button>
+  <button class="btn" onclick="alert('Экран Склада - Вечер 2')">4. [МОЙ СКЛАД]</button>
   <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
+</div>
+
+<div id="prihod_form" class="screen">
+  <h2>Приход на склад</h2>
+  <label>Товар:</label>
+  <input id="tovar_name" placeholder="Вырезка говяжья" />
+  <label>Вес, кг:</label>
+  <input id="tovar_kg" type="number" placeholder="10" />
+  <label>Поставщик:</label>
+  <input id="postavshik" placeholder="Мясной двор" />
+  <button class="btn btn-green" onclick="savePrihod()">СОХРАНИТЬ ПРИХОД</button>
+  <button class="btn btn-grey" onclick="showScreen('shef')">НАЗАД</button>
 </div>
 
 <div id="povar_select" class="screen">
@@ -42,15 +53,15 @@
 
 <div id="povar" class="screen">
   <h1 id="povar_name"></h1>
-  <button class="btn" onclick="alert('Форма: Взял со склада')">ВЗЯТЬ СО СКЛАДА</button>
-  <button class="btn" onclick="alert('Список заданий')">МОИ ЗАДАНИЯ</button>
-  <button class="btn" onclick="alert('Форма: Вернуть на склад')">ВЕРНУТЬ НА СКЛАД</button>
+  <button class="btn" onclick="alert('Форма Взял - Вечер 2')">ВЗЯТЬ СО СКЛАДА</button>
+  <button class="btn" onclick="alert('Список заданий - Вечер 3')">МОИ ЗАДАНИЯ</button>
+  <button class="btn" onclick="alert('Форма Вернуть - Вечер 2')">ВЕРНУТЬ НА СКЛАД</button>
   <button class="btn btn-grey" onclick="showScreen('povar_select')">СМЕНИТЬ ПОВАРА</button>
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs';
+  const SUPABASE_URL = 'ТВОЙ_URL'; // ЗАМЕНИ НА СВОЙ
+  const SUPABASE_ANON_KEY = 'ТВОЙ_ANON_KEY'; // ЗАМЕНИ НА СВОЙ
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
 
@@ -63,13 +74,9 @@
     const pin = document.getElementById('pin').value;
     const { data } = await db.from('users').select().eq('pin', pin).single();
     if (!data) return alert('Неверный ПИН');
-    
     currentUser = data;
-    if (data.role === 'shef') {
-      showScreen('shef');
-    } else {
-      loadPovarSelect();
-    }
+    if (data.role === 'shef') showScreen('shef');
+    else loadPovarSelect();
   }
 
   async function loadPovarSelect() {
@@ -87,6 +94,30 @@
     showScreen('povar');
   }
 
+  async function savePrihod() {
+    const name = document.getElementById('tovar_name').value;
+    const kg = parseFloat(document.getElementById('tovar_kg').value);
+    const postavshik = document.getElementById('postavshik').value;
+    
+    if (!name || !kg) return alert('Заполни Товар и Вес');
+
+    const { error } = await db.from('sklad_zapisi').insert({
+      tovar: name,
+      kg: kg,
+      tip: 'приход',
+      postavshik: postavshik,
+      otvetstvenniy: currentUser.name
+    });
+
+    if (error) return alert('Ошибка: ' + error.message);
+    
+    alert(`Приход сохранён: ${name} ${kg} кг`);
+    document.getElementById('tovar_name').value = '';
+    document.getElementById('tovar_kg').value = '';
+    document.getElementById('postavshik').value = '';
+    showScreen('shef');
+  }
+
   function logout() {
     currentUser = null;
     document.getElementById('pin').value = '';
@@ -95,4 +126,4 @@
 </script>
 
 </body>
-</html>
+  </html>
