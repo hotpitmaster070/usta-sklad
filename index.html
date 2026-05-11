@@ -12,9 +12,13 @@
     .btn { background: #ff3b30; color: #fff; border: none; padding: 18px; margin: 8px 0; width: 100%; font-size: 18px; font-weight: bold; border-radius: 12px; }
     .btn-green { background: #34c759; }
     .btn-grey { background: #48484a; }
-    input, select { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
+    input { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
     h1, h2 { text-align: center; }
     label { display: block; margin-top: 12px; color: #8e8e93; }
+    table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+    td, th { padding: 12px; border-bottom: 1px solid #48484a; text-align: left; }
+    th { color: #8e8e93; }
+    .kg { text-align: right; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -29,8 +33,14 @@
   <h1>Экран Шефа 🧱</h1>
   <button class="btn" onclick="showScreen('prihod_form')">1. [+ ПРИХОД ТОВАРА]</button>
   <button class="btn" onclick="alert('Форма Задания - Вечер 3')">2. [СОЗДАТЬ ЗАДАНИЕ]</button>
-  <button class="btn" onclick="alert('Экран Склада - Вечер 2')">4. [МОЙ СКЛАД]</button>
+  <button class="btn" onclick="loadSklad()">4. [МОЙ СКЛАД]</button>
   <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
+</div>
+
+<div id="sklad_screen" class="screen">
+  <h2>Остатки на складе</h2>
+  <div id="sklad_table"></div>
+  <button class="btn btn-grey" onclick="showScreen('shef')">НАЗАД</button>
 </div>
 
 <div id="prihod_form" class="screen">
@@ -70,8 +80,8 @@
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs';
+  const SUPABASE_URL = 'ТВОЙ_URL'; // ЗАМЕНИ НА СВОЙ
+  const SUPABASE_ANON_KEY = 'ТВОЙ_ANON_KEY'; // ЗАМЕНИ НА СВОЙ
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
   let currentPovar = null;
@@ -134,6 +144,26 @@
     document.getElementById('vzyal_tovar').value = '';
     document.getElementById('vzyal_kg').value = '';
     showScreen('povar');
+  }
+
+  async function loadSklad() {
+    const { data } = await db.from('sklad_zapisi').select();
+    const ostatki = {};
+    data.forEach(z => {
+      if (!ostatki[z.tovar]) ostatki[z.tovar] = 0;
+      if (z.tip === 'приход') ostatki[z.tovar] += z.kg;
+      if (z.tip === 'расход') ostatki[z.tovar] -= z.kg;
+    });
+    
+    let html = '<table><tr><th>Товар</th><th class="kg">Остаток, кг</th></tr>';
+    for (let tovar in ostatki) {
+      html += `<tr><td>${tovar}</td><td class="kg">${ostatki[tovar].toFixed(2)}</td></tr>`;
+    }
+    html += '</table>';
+    if (Object.keys(ostatki).length === 0) html = 'Склад пустой';
+    
+    document.getElementById('sklad_table').innerHTML = html;
+    showScreen('sklad_screen');
   }
 
   function logout() {
