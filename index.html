@@ -47,23 +47,34 @@
 
 <div id="povar_select" class="screen">
   <h1>Ты кто?</h1>
-  <div id="povar_list" class="povar-list"></div>
+  <div id="povar_list"></div>
   <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
 </div>
 
 <div id="povar" class="screen">
   <h1 id="povar_name"></h1>
-  <button class="btn" onclick="alert('Форма Взял - Вечер 2')">ВЗЯТЬ СО СКЛАДА</button>
+  <button class="btn" onclick="showScreen('vzyal_form')">ВЗЯТЬ СО СКЛАДА</button>
   <button class="btn" onclick="alert('Список заданий - Вечер 3')">МОИ ЗАДАНИЯ</button>
   <button class="btn" onclick="alert('Форма Вернуть - Вечер 2')">ВЕРНУТЬ НА СКЛАД</button>
   <button class="btn btn-grey" onclick="showScreen('povar_select')">СМЕНИТЬ ПОВАРА</button>
 </div>
 
+<div id="vzyal_form" class="screen">
+  <h2>Взял со склада</h2>
+  <label>Товар:</label>
+  <input id="vzyal_tovar" placeholder="Вырезка говяжья" />
+  <label>Вес, кг:</label>
+  <input id="vzyal_kg" type="number" placeholder="2.5" />
+  <button class="btn btn-green" onclick="saveVzyal()">СПИСАТЬ СО СКЛАДА</button>
+  <button class="btn btn-grey" onclick="showScreen('povar')">НАЗАД</button>
+</div>
+
 <script>
-  const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs';
+  const SUPABASE_URL = 'ТВОЙ_URL'; // ЗАМЕНИ НА СВОЙ
+  const SUPABASE_ANON_KEY = 'ТВОЙ_ANON_KEY'; // ЗАМЕНИ НА СВОЙ
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
+  let currentPovar = null;
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -90,6 +101,7 @@
   }
 
   function selectPovar(name) {
+    currentPovar = name;
     document.getElementById('povar_name').innerText = `Цех: ${name}`;
     showScreen('povar');
   }
@@ -98,19 +110,11 @@
     const name = document.getElementById('tovar_name').value;
     const kg = parseFloat(document.getElementById('tovar_kg').value);
     const postavshik = document.getElementById('postavshik').value;
-    
     if (!name || !kg) return alert('Заполни Товар и Вес');
-
     const { error } = await db.from('sklad_zapisi').insert({
-      tovar: name,
-      kg: kg,
-      tip: 'приход',
-      postavshik: postavshik,
-      otvetstvenniy: currentUser.name
+      tovar: name, kg: kg, tip: 'приход', postavshik: postavshik, otvetstvenniy: currentUser.name
     });
-
     if (error) return alert('Ошибка: ' + error.message);
-    
     alert(`Приход сохранён: ${name} ${kg} кг`);
     document.getElementById('tovar_name').value = '';
     document.getElementById('tovar_kg').value = '';
@@ -118,8 +122,22 @@
     showScreen('shef');
   }
 
+  async function saveVzyal() {
+    const name = document.getElementById('vzyal_tovar').value;
+    const kg = parseFloat(document.getElementById('vzyal_kg').value);
+    if (!name || !kg) return alert('Заполни Товар и Вес');
+    const { error } = await db.from('sklad_zapisi').insert({
+      tovar: name, kg: kg, tip: 'расход', otvetstvenniy: currentPovar
+    });
+    if (error) return alert('Ошибка: ' + error.message);
+    alert(`${currentPovar} списал: ${name} ${kg} кг`);
+    document.getElementById('vzyal_tovar').value = '';
+    document.getElementById('vzyal_kg').value = '';
+    showScreen('povar');
+  }
+
   function logout() {
-    currentUser = null;
+    currentUser = null; currentPovar = null;
     document.getElementById('pin').value = '';
     showScreen('login');
   }
