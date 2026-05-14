@@ -12,13 +12,14 @@
     .btn { background: #ff3b30; color: #fff; border: none; padding: 18px; margin: 8px 0; width: 100%; font-size: 18px; font-weight: bold; border-radius: 12px; }
     .btn-green { background: #34c759; }
     .btn-grey { background: #48484a; }
-    input { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
+    input, select, textarea { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
     h1, h2 { text-align: center; }
     label { display: block; margin-top: 12px; color: #8e8e93; }
     table { width: 100%; margin-top: 15px; border-collapse: collapse; }
     td, th { padding: 12px; border-bottom: 1px solid #48484a; text-align: left; }
     th { color: #8e8e93; }
     .kg { text-align: right; font-weight: bold; }
+    .zadanie { background: #2c2c2e; padding: 15px; border-radius: 12px; margin: 10px 0; }
   </style>
 </head>
 <body>
@@ -32,9 +33,19 @@
 <div id="shef" class="screen">
   <h1>Экран Шефа 🧱</h1>
   <button class="btn" onclick="showScreen('prihod_form')">1. [+ ПРИХОД ТОВАРА]</button>
-  <button class="btn" onclick="alert('Форма Задания - Вечер 3')">2. [СОЗДАТЬ ЗАДАНИЕ]</button>
+  <button class="btn" onclick="loadPovarsForZadanie()">2. [СОЗДАТЬ ЗАДАНИЕ]</button>
   <button class="btn" onclick="loadSklad()">4. [МОЙ СКЛАД]</button>
   <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
+</div>
+
+<div id="zadanie_form" class="screen">
+  <h2>Новое задание</h2>
+  <label>Кому:</label>
+  <select id="komu_povar"></select>
+  <label>Текст задания:</label>
+  <textarea id="text_zadaniya" rows="4" placeholder="Замариновать 5кг вырезки на шашлык"></textarea>
+  <button class="btn btn-green" onclick="saveZadanie()">ОТПРАВИТЬ ПОВАРУ</button>
+  <button class="btn btn-grey" onclick="showScreen('shef')">НАЗАД</button>
 </div>
 
 <div id="sklad_screen" class="screen">
@@ -64,9 +75,15 @@
 <div id="povar" class="screen">
   <h1 id="povar_name"></h1>
   <button class="btn" onclick="showScreen('vzyal_form')">ВЗЯТЬ СО СКЛАДА</button>
-  <button class="btn" onclick="alert('Список заданий - Вечер 3')">МОИ ЗАДАНИЯ</button>
+  <button class="btn" onclick="loadMoiZadaniya()">МОИ ЗАДАНИЯ</button>
   <button class="btn" onclick="alert('Форма Вернуть - Вечер 2')">ВЕРНУТЬ НА СКЛАД</button>
   <button class="btn btn-grey" onclick="showScreen('povar_select')">СМЕНИТЬ ПОВАРА</button>
+</div>
+
+<div id="moi_zadaniya_screen" class="screen">
+  <h2>Мои задания</h2>
+  <div id="spisok_zadaniy"></div>
+  <button class="btn btn-grey" onclick="showScreen('povar')">НАЗАД</button>
 </div>
 
 <div id="vzyal_form" class="screen">
@@ -80,8 +97,8 @@
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co'; 
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'; 
+  const SUPABASE_URL = 'ВСТАВЬ_СВОЙ_URL_СЮДА'; 
+  const SUPABASE_ANON_KEY = 'ВСТАВЬ_СВОЙ_ANON_KEY_СЮДА'; 
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
   let currentPovar = null;
@@ -114,6 +131,40 @@
     currentPovar = name;
     document.getElementById('povar_name').innerText = `Цех: ${name}`;
     showScreen('povar');
+  }
+
+  async function loadPovarsForZadanie() {
+    const { data } = await db.from('users').select().eq('role', 'povar');
+    const select = document.getElementById('komu_povar');
+    select.innerHTML = '';
+    data.forEach(p => {
+      select.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+    });
+    showScreen('zadanie_form');
+  }
+
+  async function saveZadanie() {
+    const komu = document.getElementById('komu_povar').value;
+    const text = document.getElementById('text_zadaniya').value;
+    if (!text) return alert('Напиши текст задания');
+    const { error } = await db.from('zadaniya').insert({
+      text_zadaniya: text, komu: komu, ot_kogo: currentUser.name
+    });
+    if (error) return alert('Ошибка: ' + error.message);
+    alert(`Задание отправлено повару ${komu}`);
+    document.getElementById('text_zadaniya').value = '';
+    showScreen('shef');
+  }
+
+  async function loadMoiZadaniya() {
+    const { data } = await db.from('zadaniya').select().eq('komu', currentPovar).order('created_at', { ascending: false });
+    let html = '';
+    if (data.length === 0) html = 'Заданий нет. Отдыхай 🧱';
+    data.forEach(z => {
+      html += `<div class="zadanie"><b>От:</b> ${z.ot_kogo}<br><b>Задача:</b> ${z.text_zadaniya}<br><b>Статус:</b> ${z.status}</div>`;
+    });
+    document.getElementById('spisok_zadaniy').innerHTML = html;
+    showScreen('moi_zadaniya_screen');
   }
 
   async function savePrihod() {
