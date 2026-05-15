@@ -49,7 +49,7 @@
   <label>Кому:</label>
   <select id="komu_povar"></select>
   <label>Текст задания:</label>
-  <textarea id="text_zadaniya" rows="4" placeholder="Сделать фарш из вырезки 5кг"></textarea>
+  <textarea id="text_zadaniya" rows="4" placeholder="Сделать из обрезки говяжий фарш"></textarea>
   <button class="btn btn-green" onclick="saveZadanie()">ОТПРАВИТЬ ПОВАРУ</button>
   <button class="btn btn-grey" onclick="showScreen('shef')">НАЗАД</button>
 </div>
@@ -321,59 +321,49 @@
   }
 
   async function markZadanieDone(id) {
-    if (!confirm('Подтвердить выполнение задания?')) return;
-
-    // Берем текст задания
     const { data: zadanie } = await db.from('zadaniya').select().eq('id', id).single();
     if (!zadanie) return alert('Задание не найдено');
 
-    // Парсим "Сделать фарш из вырезки 5кг"
-    const parsed = parseZadanie(zadanie.text_zadaniya);
+    const produkt = parseProduktName(zadanie.text_zadaniya);
+    
+    const kgStr = prompt(`Сколько кг "${produkt}" получилось?`, "0");
+    if (!kgStr) return;
+    
+    const kg = parseFloat(kgStr.replace(',', '.'));
+    if (isNaN(kg) || kg <= 0) return alert('Введи корректный вес');
 
-    if (parsed) {
-      // Добавляем в склад
-      await db.from('sklad_zapisi').insert({
-        tovar: parsed.produkt,
-        kg: parsed.kg,
-        tip: 'приход',
-        otvetstvenniy: currentPovar,
-        comment: 'Из задания: ' + zadanie.text_zadaniya
-      });
+    await db.from('sklad_zapisi').insert({
+      tovar: produkt,
+      kg: kg,
+      tip: 'приход',
+      otvetstvenniy: currentPovar,
+      comment: 'Из задания: ' + zadanie.text_zadaniya
+    });
 
-      // Добавляем в "Мои заготовки"
-      await db.from('zagotovki').insert({
-        produkt: parsed.produkt,
-        iz_syrya: parsed.syrye,
-        kolvo_kg: parsed.kg,
-        sdelal_kto: currentPovar
-      });
+    await db.from('zagotovki').insert({
+      produkt: produkt,
+      iz_syrya: 'По заданию',
+      kolvo_kg: kg,
+      sdelal_kto: currentPovar
+    });
 
-      alert(`Подтверждено! ${parsed.kg}кг ${parsed.produkt} добавлено в заготовки`);
-    }
-
-    // Меняем статус
     const { error } = await db.from('zadaniya')
     .update({ status: 'подтверждено' })
     .eq('id', id);
 
     if (error) return alert('Ошибка: ' + error.message);
 
+    alert(`Подтверждено! ${kg}кг ${produkt} добавлено в заготовки`);
     loadMoiZadaniya('active');
     updateZadanieBadge();
   }
 
-  // Парсер для "Сделать фарш из вырезки 5кг"
-  function parseZadanie(text) {
-    const regex = /сделать\s+(.+?)\s+из\s+(.+?)\s*(\d+[\.,]?\d*)\s*кг/i;
-    const match = text.match(regex);
-
-    if (!match) return null;
-
-    return {
-      produkt: match[1].trim(),
-      syrye: match[2].trim(),
-      kg: parseFloat(match[3].replace(',', '.'))
-    };
+  function parseProduktName(text) {
+    let name = text.toLowerCase();
+    name = name.replace(/сделать|приготовить|порубить|нарезать|вытащить|из|от|для|с|в|на/g, '');
+    name = name.trim();
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    return name || 'Заготовка';
   }
 
   async function updateZadanieBadge() {
@@ -517,4 +507,121 @@
           <td>${new Date(z.created_at).toLocaleString('ru-RU', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
         </tr>`;
       });
- 
+      html += '</table></div>';
+    }
+    html += '<button class="btn btn-secondary" onclick="showScreen(\'shef\')">НАЗАД</button>';
+    document.getElementById('shef_zagotovki').innerHTML = html;
+    showScreen('shef_zagotovki');
+  }
+
+  async function saveSpisanie() {
+    const tovar = document.getElementById('spis_tovar').value;
+    const kg = parseFloat(document.getElementById('spis_kg').value);
+    const prichina = document.getElementById('spis_prichina').value;
+    const comment = document.getElementById('spis_comment').value;
+    const kto = currentUser? currentUser.name : currentPovar;
+
+    if (!tovar ||!kg) return alert('Заполни товар и вес');
+
+    const { error } = await db.from('sklad_zapisi').insert({
+      tovar: tovar + ' [СПИСАНИЕ]',
+      kg: kg,
+      tip: 'списание',
+      otvetstvenniy: kto,
+      comment: prichina + '. ' + comment
+    });
+
+    if (error) return alert('Ошибка: ' + error.message);
+    alert(`Списано: ${tovar} ${kg} кг\nПричина: ${prichina}`);
+
+    document.getElementById('spis_tovar').value = '';
+    document.getElementById('spis_kg').value = '';
+    document.getElementById('spis_comment').value = '';
+    showScreen(currentUser.role==='shef'?'shef':'povar');
+  }
+
+  async function pokazatOtchetSpisanie() {
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await db.from('sklad_zapisi')
+  .select('*')
+  .eq('tip', 'списание')
+  .gte('created_at', today + 'T00:00:00')
+  .order('created_at', { ascending: false });
+
+    let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>Кг</th><th>Причина</th><th>Кто</th><th>Время</th></tr>';
+    let itogo = 0;
+    data.forEach(z => {
+      itogo += z.kg;
+      html += `<tr>
+        <td>${z.tovar.replace(' [СПИСАНИЕ]','')}</td>
+        <td class="kg">${z.kg}</td>
+        <td>${z.comment || '-'}</td>
+        <td>${z.otvetstvenniy}</td>
+        <td>${new Date(z.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})}</td>
+      </tr>`;
+    });
+    html += `<tr><td><b>ИТОГО</b></td><td class="kg"><b>${itogo.toFixed(2)}</b></td><td colspan="3"></td></tr></table></div>`;
+    if (data.length === 0) html = '<div class="card">Списаний за сегодня нет</div>';
+
+    document.getElementById('otchet_spisanie_table').innerHTML = html;
+    showScreen('otchet_spisanie');
+  }
+
+  async function pokazatMesyacnyyOtchet() {
+    const picker = document.getElementById('mesyac_picker');
+    if (!picker.value) {
+      const now = new Date();
+      picker.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    }
+
+    const [year, month] = picker.value.split('-');
+    const start = `${year}-${month}-01`;
+    const end = new Date(year, month, 1).toISOString().split('T')[0];
+
+    document.getElementById('mesyac_title').innerText = `Отчёт за ${month}.${year}`;
+
+    const { data } = await db.from('sklad_zapisi')
+ .select('*')
+ .gte('created_at', start)
+ .lt('created_at', end);
+
+    const itogi = {};
+    data.forEach(z => {
+      const name = z.tovar.replace(' [ОТХОДЫ]','').replace(' [СПИСАНИЕ]','');
+      if (!itogi[name]) itogi[name] = { prihod:0, rashod:0, othody:0, spisanie:0 };
+      if (z.tip === 'приход') itogi[name].prihod += z.kg;
+      if (z.tip === 'расход' &&!z.tovar.includes('[ОТХОДЫ]')) itogi[name].rashod += z.kg;
+      if (z.tip === 'расход' && z.tovar.includes('[ОТХОДЫ]')) itogi[name].othody += z.kg;
+      if (z.tip === 'списание') itogi[name].spisanie += z.kg;
+    });
+
+    let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>Приход</th><th>Расход</th><th>Отходы</th><th>Списание</th><th>Остаток</th></tr>';
+    for (let tovar in itogi) {
+      const i = itogi[tovar];
+      const ostatok = i.prihod - i.rashod - i.othody - i.spisanie;
+      html += `<tr>
+        <td>${tovar}</td>
+        <td class="kg">${i.prihod.toFixed(2)}</td>
+        <td class="kg">${i.rashod.toFixed(2)}</td>
+        <td class="kg" style="color:#ff3b30">${i.othody.toFixed(2)}</td>
+        <td class="kg" style="color:#ff3b30">${i.spisanie.toFixed(2)}</td>
+        <td class="kg">${ostatok.toFixed(2)}</td>
+      </tr>`;
+    }
+    html += '</table></div>';
+    if (Object.keys(itogi).length === 0) html = '<div class="card">Данных за этот месяц нет</div>';
+
+    document.getElementById('mesyac_table').innerHTML = html;
+    showScreen('mesyac_otchet');
+  }
+
+  function logout() {
+    currentUser = null;
+    currentPovar = null;
+    document.getElementById('pin').value = '';
+    showScreen('login');
+  }
+</script>
+
+</body>
+</html>
