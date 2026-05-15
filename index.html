@@ -563,7 +563,7 @@
     html += `<tr><td><b>ИТОГО</b></td><td class="kg"><b>${itogo.toFixed(2)}</b></td><td colspan="3"></td></tr></table></div>`;
     if (data.length === 0) html = '<div class="card">Списаний за сегодня нет</div>';
 
-    document.getElementById('otchet_spisanie_table').innerHTML = html;
+   document.getElementById('otchet_spisanie_table').innerHTML = html;
     showScreen('otchet_spisanie');
   }
 
@@ -581,9 +581,9 @@
     document.getElementById('mesyac_title').innerText = `Отчёт за ${month}.${year}`;
 
     const { data } = await db.from('sklad_zapisi')
- .select('*')
- .gte('created_at', start)
- .lt('created_at', end);
+     .select('*')
+     .gte('created_at', start)
+     .lt('created_at', end);
 
     const itogi = {};
     data.forEach(z => {
@@ -618,10 +618,8 @@
   function logout() {
     currentUser = null;
     currentPovar = null;
-    document.getElementById('pin').value = '';
     showScreen('login');
   }
 </script>
-
 </body>
-</html>
+</html> 
