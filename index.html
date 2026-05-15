@@ -14,7 +14,7 @@
     .btn-grey { background: #48484a; }
     .btn-secondary { background: #5e5e60; }
     input, select, textarea { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
-    h1, h2 { text-align: center; }
+    h1, h2, h3 { text-align: center; }
     label { display: block; margin-top: 12px; color: #8e8e93; }
     table { width: 100%; margin-top: 15px; border-collapse: collapse; }
     td, th { padding: 12px; border-bottom: 1px solid #48484a; text-align: left; }
@@ -86,9 +86,14 @@
 <div id="zagotovka_form" class="screen">
   <h2>Сделать заготовку</h2>
   <div class="card">
-    <input type="text" id="z_product" placeholder="Что сделали: Фарш говяжий">
-    <input type="text" id="z_iz_syrya" placeholder="Из чего: Вырезка говяжья">
+    <h3>Взял со склада:</h3>
+    <input type="text" id="z_syrye" placeholder="Что взял: Вырезка говяжья">
+    <input type="number" id="z_syrye_kg" placeholder="Сколько кг взял" step="0.01">
+    
+    <h3>Получилось:</h3>
+    <input type="text" id="z_product" placeholder="Что сделал: Фарш говяжий">
     <input type="number" id="z_kg" placeholder="Сколько кг получилось" step="0.01">
+    
     <button class="btn btn-green" onclick="sohranitZagotovku()">СОХРАНИТЬ</button>
     <button class="btn btn-secondary" onclick="showScreen('povar')">НАЗАД</button>
   </div>
@@ -113,8 +118,8 @@
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co'; 
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'; 
+  const SUPABASE_URL = 'ТВОЙ_URL_ЗДЕСЬ'; 
+  const SUPABASE_ANON_KEY = 'ТВОЙ_KEY_ЗДЕСЬ'; 
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser = null;
   let currentPovar = null;
@@ -234,29 +239,45 @@
   }
 
   async function sohranitZagotovku() {
+    const syrye = document.getElementById('z_syrye').value;
+    const syrye_kg = parseFloat(document.getElementById('z_syrye_kg').value);
     const produkt = document.getElementById('z_product').value;
-    const iz_syrya = document.getElementById('z_iz_syrya').value;
-    const kolvo = document.getElementById('z_kg').value;
+    const produkt_kg = parseFloat(document.getElementById('z_kg').value);
     const kto = currentPovar ? currentPovar : 'Неизвестно';
 
-    if (!produkt || !iz_syrya || !kolvo) {
+    if (!syrye || !syrye_kg || !produkt || !produkt_kg) {
       alert('Заполни все поля');
       return;
     }
 
-    const { error } = await db.from('zagotovki').insert({
+    // 1. Списываем сырьё со склада
+    const { error: err1 } = await db.from('sklad_zapisi').insert({
+      tovar: syrye,
+      kg: syrye_kg,
+      tip: 'расход',
+      otvetstvenniy: kto
+    });
+
+    if (err1) {
+      alert('Ошибка списания: ' + err1.message);
+      return;
+    }
+
+    // 2. Записываем заготовку в морозилку
+    const { error: err2 } = await db.from('zagotovki').insert({
       produkt: produkt,
-      iz_syrya: iz_syrya,
-      kolvo_kg: parseFloat(kolvo),
+      iz_syrya: syrye + ' + syrye_kg + ' кг',
+      kolvo_kg: produkt_kg,
       sdelal_kto: kto
     });
 
-    if (error) {
-      alert('Ошибка: ' + error.message);
-    } else {
-      alert('Заготовка сохранена в морозилку!');
-      showScreen('povar');
+    if (err2) {
+      alert('Ошибка сохранения заготовки: ' + err2.message);
+      return;
     }
+
+    alert(`Готово! Списано ${syrye} ${syrye_kg} кг. Получено ${produkt} ${produkt_kg} кг.`);
+    showScreen('povar');
   }
 
   async function pokazatZagotovki() {
