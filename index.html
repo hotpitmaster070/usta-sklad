@@ -636,7 +636,9 @@ html += `<tr>
 <td><input type="number" id="inv_${tovar}" value="${ostatki[tovar].toFixed(2)}" step="0.01" style="width:100px; text-align:right;"></td>
 </tr>`;
 }
-html += '</table></div>';
+} // ← вот эта скобка закрывает for
+
+html += '</table></div>'; // ← а это уже вне цикла
 
 if (Object.keys(ostatki).length === 0) {
 html = '<div class="card">Склад пустой</div>';
@@ -677,11 +679,3 @@ showScreen('login');
 </script>
 </body>
 </html>
-  function logout() {
-    currentUser = null;
-    currentPovar = null;
-    showScreen('login');
-  }
-</script>
-</body>
-</html> 
