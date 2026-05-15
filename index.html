@@ -615,6 +615,68 @@
     showScreen('mesyac_otchet');
   }
 
+async function startInventarizatsiya() {
+const { data } = await db.from('sklad_zapisi').select();
+const ostatki = {};
+data.forEach(z => {
+if (!ostatki[z.tovar]) ostatki[z.tovar] = 0;
+if (z.tip === 'приход') ostatki[z.tovar] += z.kg;
+if (z.tip === 'расход' || z.tip === 'списание') ostatki[z.tovar] -= z.kg;
+});
+
+inventarizatsiyaData = ostatki;
+const today = new Date().toLocaleDateString('ru-RU');
+document.getElementById('inv_date').innerText = today;
+
+let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>Факт, кг</th></tr>';
+for (let tovar in ostatki) {
+if (ostatki[tovar] > 0.001) {
+html += `<tr>
+<td>${tovar}</td>
+<td><input type="number" id="inv_${tovar}" value="${ostatki[tovar].toFixed(2)}" step="0.01" style="width:100px; text-align:right;"></td>
+</tr>`;
+}
+html += '</table></div>';
+
+if (Object.keys(ostatki).length === 0) {
+html = '<div class="card">Склад пустой</div>';
+}
+
+document.getElementById('inv_table').innerHTML = html;
+showScreen('inventarizatsiya_screen');
+}
+
+async function sohranitInventarizatsiyu() {
+const now = new Date();
+const mesyac = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+for (let tovar in inventarizatsiyaData) {
+const fakt = parseFloat(document.getElementById(`inv_${tovar}`).value) || 0;
+const raznitsa = fakt - inventarizatsiyaData[tovar];
+
+if (Math.abs(raznitsa) > 0.001) {
+await db.from('sklad_zapisi').insert({
+tovar: tovar + ' [ИНВЕНТАРИЗАЦИЯ]',
+kg: Math.abs(raznitsa),
+tip: raznitsa > 0? 'приход' : 'списание',
+otvetstvenniy: currentUser.name,
+comment: `Инвентаризация за ${mesyac}. Разница: ${raznitsa.toFixed(2)}`
+});
+}
+}
+
+alert('Инвентаризация сохранена! Месяц закрыт.');
+showScreen('shef');
+}
+
+function logout() {
+currentUser = null;
+currentPovar = null;
+showScreen('login');
+}
+</script>
+</body>
+</html>
   function logout() {
     currentUser = null;
     currentPovar = null;
