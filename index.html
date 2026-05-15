@@ -7,21 +7,21 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: -apple-system, sans-serif; background: #1a1a1a; color: #fff; margin: 0; padding: 20px; }
-   .screen { display: none; }
-   .screen.active { display: block; }
-   .btn { background: #ff3b30; color: #fff; border: none; padding: 18px; margin: 8px 0; width: 100%; font-size: 18px; font-weight: bold; border-radius: 12px; }
-   .btn-green { background: #34c759; }
-   .btn-grey { background: #48484a; }
-   .btn-secondary { background: #5e5e60; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .btn { background: #ff3b30; color: #fff; border: none; padding: 18px; margin: 8px 0; width: 100%; font-size: 18px; font-weight: bold; border-radius: 12px; }
+  .btn-green { background: #34c759; }
+  .btn-grey { background: #48484a; }
+  .btn-secondary { background: #5e5e60; }
     input, select, textarea { width: 100%; padding: 15px; margin: 8px 0; font-size: 16px; border-radius: 8px; border: 1px solid #48484a; background: #2c2c2e; color: #fff; box-sizing: border-box; }
     h1, h2, h3 { text-align: center; }
     label { display: block; margin-top: 12px; color: #8e8e93; }
     table { width: 100%; margin-top: 15px; border-collapse: collapse; }
     td, th { padding: 12px; border-bottom: 1px solid #48484a; text-align: left; }
     th { color: #8e8e93; }
-   .kg { text-align: right; font-weight: bold; }
-   .card { background: #2c2c2e; padding: 15px; border-radius: 12px; margin: 10px 0; }
-   .table-wrap { overflow-x: auto; }
+  .kg { text-align: right; font-weight: bold; }
+  .card { background: #2c2c2e; padding: 15px; border-radius: 12px; margin: 10px 0; }
+  .table-wrap { overflow-x: auto; }
   </style>
 </head>
 <body>
@@ -94,16 +94,25 @@
     <input type="text" id="z_syrye" placeholder="Что взял: Туша баранины">
     <input type="number" id="z_syrye_kg" placeholder="Сколько кг взял" step="0.01">
 
-    <h3>Получилось продукт 1:</h3>
-    <input type="text" id="z_product1" placeholder="Мякоть баранины">
-    <input type="number" id="z_kg1" placeholder="Сколько кг" step="0.01">
+    <h3>Получилось:</h3>
 
-    <h3>Получилось продукт 2:</h3>
-    <input type="text" id="z_product2" placeholder="Обрезки баранины">
-    <input type="number" id="z_kg2" placeholder="Сколько кг" step="0.01">
+    <input type="text" id="z_product1" placeholder="Продукт 1">
+    <input type="number" id="z_kg1" placeholder="Кг продукт 1" step="0.01">
+
+    <input type="text" id="z_product2" placeholder="Продукт 2">
+    <input type="number" id="z_kg2" placeholder="Кг продукт 2" step="0.01">
+
+    <input type="text" id="z_product3" placeholder="Продукт 3">
+    <input type="number" id="z_kg3" placeholder="Кг продукт 3" step="0.01">
+
+    <input type="text" id="z_product4" placeholder="Продукт 4">
+    <input type="number" id="z_kg4" placeholder="Кг продукт 4" step="0.01">
+
+    <input type="text" id="z_product5" placeholder="Продукт 5">
+    <input type="number" id="z_kg5" placeholder="Кг продукт 5" step="0.01">
 
     <div id="raschet_musora" style="margin-top:10px; color:#8e8e93;">
-      Мусор рассчитается автоматически
+      Отходы/потери: 0 кг
     </div>
 
     <button class="btn btn-green" onclick="sohranitZagotovku()">СОХРАНИТЬ</button>
@@ -293,14 +302,16 @@
   }
 
   document.addEventListener('input', function(e){
-    if(e.target.id==='z_kg1'||e.target.id==='z_kg2'||e.target.id==='z_syrye_kg') calcMusor();
+    if(e.target.id.startsWith('z_kg') || e.target.id==='z_syrye_kg') calcMusor();
   });
 
   function calcMusor() {
     const syrye = parseFloat(document.getElementById('z_syrye_kg').value) || 0;
-    const kg1 = parseFloat(document.getElementById('z_kg1').value) || 0;
-    const kg2 = parseFloat(document.getElementById('z_kg2').value) || 0;
-    const musor = +(syrye - kg1 - kg2).toFixed(3);
+    let sumProd = 0;
+    for(let i=1; i<=5; i++){
+      sumProd += parseFloat(document.getElementById('z_kg'+i).value) || 0;
+    }
+    const musor = +(syrye - sumProd).toFixed(3);
     document.getElementById('raschet_musora').innerText =
       musor >= 0? `Отходы/потери: ${musor} кг` : 'Ошибка: больше чем взял';
   }
@@ -308,37 +319,35 @@
   async function sohranitZagotovku() {
     const syrye = document.getElementById('z_syrye').value;
     const syrye_kg = parseFloat(document.getElementById('z_syrye_kg').value);
-    const produkt1 = document.getElementById('z_product1').value;
-    const kg1 = parseFloat(document.getElementById('z_kg1').value) || 0;
-    const produkt2 = document.getElementById('z_product2').value;
-    const kg2 = parseFloat(document.getElementById('z_kg2').value) || 0;
     const kto = currentPovar? currentPovar : 'Неизвестно';
 
     if (!syrye ||!syrye_kg) return alert('Заполни что взял и сколько');
-    const itogo_prod = +(kg1 + kg2).toFixed(3);
-    if (itogo_prod > syrye_kg + 0.001) return alert('Ошибка: Сумма продуктов больше чем взял со склада');
 
-    const musor_kg = +(syrye_kg - itogo_prod).toFixed(3);
+    let sumProd = 0;
+    const products = [];
+
+    for(let i=1; i<=5; i++){
+      const name = document.getElementById('z_product'+i).value;
+      const kg = parseFloat(document.getElementById('z_kg'+i).value) || 0;
+      if(name && kg > 0){
+        products.push({name, kg});
+        sumProd += kg;
+      }
+    }
+
+    if (sumProd > syrye_kg + 0.001) return alert('Ошибка: Сумма продуктов больше чем взял со склада');
+    const musor_kg = +(syrye_kg - sumProd).toFixed(3);
 
     await db.from('sklad_zapisi').insert({
       tovar: syrye, kg: syrye_kg, tip: 'расход', otvetstvenniy: kto
     });
 
-    if (kg1 > 0 && produkt1) {
+    for(let p of products){
       await db.from('sklad_zapisi').insert({
-        tovar: produkt1, kg: kg1, tip: 'приход', otvetstvenniy: kto, comment: 'Из: ' + syrye
+        tovar: p.name, kg: p.kg, tip: 'приход', otvetstvenniy: kto, comment: 'Из: ' + syrye
       });
       await db.from('zagotovki').insert({
-        produkt: produkt1, iz_syrya: `${syrye} ${syrye_kg}кг`, kolvo_kg: kg1, sdelal_kto: kto
-      });
-    }
-
-    if (kg2 > 0 && produkt2) {
-      await db.from('sklad_zapisi').insert({
-        tovar: produkt2, kg: kg2, tip: 'приход', otvetstvenniy: kto, comment: 'Из: ' + syrye
-      });
-      await db.from('zagotovki').insert({
-        produkt: produkt2, iz_syrya: `${syrye} ${syrye_kg}кг`, kolvo_kg: kg2, sdelal_kto: kto
+        produkt: p.name, iz_syrya: `${syrye} ${syrye_kg}кг`, kolvo_kg: p.kg, sdelal_kto: kto
       });
     }
 
@@ -352,7 +361,7 @@
       });
     }
 
-    alert(`Готово!\nВзял: ${syrye} ${syrye_kg} кг\nВыход: ${itogo_prod} кг\nОтходы: ${musor_kg} кг`);
+    alert(`Готово!\nВзял: ${syrye} ${syrye_kg} кг\nВыход: ${sumProd.toFixed(2)} кг\nОтходы: ${musor_kg} кг`);
     showScreen('povar');
   }
 
@@ -410,10 +419,10 @@
   async function pokazatOtchetSpisanie() {
     const today = new Date().toISOString().split('T')[0];
     const { data } = await db.from('sklad_zapisi')
-     .select('*')
-     .eq('tip', 'списание')
-     .gte('created_at', today + 'T00:00:00')
-     .order('created_at', { ascending: false });
+    .select('*')
+    .eq('tip', 'списание')
+    .gte('created_at', today + 'T00:00:00')
+    .order('created_at', { ascending: false });
 
     let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>Кг</th><th>Причина</th><th>Кто</th><th>Время</th></tr>';
     let itogo = 0;
@@ -448,9 +457,9 @@
     document.getElementById('mesyac_title').innerText = `Отчёт за ${month}.${year}`;
 
     const { data } = await db.from('sklad_zapisi')
-    .select('*')
-    .gte('created_at', start)
-    .lt('created_at', end);
+   .select('*')
+   .gte('created_at', start)
+   .lt('created_at', end);
 
     const itogi = {};
     data.forEach(z => {
@@ -483,4 +492,5 @@
   }
 
   function logout() {
-    currentUs
+    currentUser = null;
+    currentPovar = null   
