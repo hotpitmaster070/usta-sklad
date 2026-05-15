@@ -81,7 +81,10 @@
 <div id="povar" class="screen">
   <h1 id="povar_name"></h1>
   <button class="btn" onclick="showScreen('vzyal_form')">ВЗЯЛ СО СКЛАДА</button>
-  <button class="btn" onclick="loadMoiZadaniya()">МОИ ЗАДАНИЯ</button>
+  <button class="btn" onclick="loadMoiZadaniya('active')" style="position:relative">
+    МОИ ЗАДАНИЯ 
+    <span id="zadanieBadge" style="display:none; position:absolute; right:15px; top:50%; transform:translateY(-50%); background:#ff3b30; color:#fff; border-radius:50%; padding:2px 8px; font-size:14px; font-weight:bold;"></span>
+  </button>
   <button class="btn" onclick="showScreen('zagotovka_form')">СДЕЛАТЬ ЗАГОТОВКУ</button>
   <button class="btn btn-grey" onclick="showScreen('spisanie_form')">СПИСАНИЕ</button>
   <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
@@ -189,7 +192,9 @@
 
       currentUser = data;
       if (data.role === 'shef') showScreen('shef');
-      else loadPovarSelect();
+      else {
+        loadPovarSelect();
+      }
     } catch(e) {
       alert('Ошибка: ' + e.message);
     }
@@ -209,6 +214,7 @@
     currentPovar = name;
     document.getElementById('povar_name').innerText = `Цех: ${name}`;
     showScreen('povar');
+    updateZadanieBadge();
   }
 
   async function loadPovarsForZadanie() {
@@ -226,32 +232,86 @@
     const text = document.getElementById('text_zadaniya').value;
     if (!text) return alert('Напиши текст задания');
     const { error } = await db.from('zadaniya').insert({
-      text_zadaniya: text, komu: komu, ot_kogo: currentUser.name
+      text_zadaniya: text, komu: komu, ot_kogo: currentUser.name, status: 'новое'
     });
     if (error) return alert('Ошибка: ' + error.message);
     alert(`Задание отправлено повару ${komu}`);
     document.getElementById('text_zadaniya').value = '';
+    updateZadanieBadge();
     showScreen('shef');
   }
 
-  async function loadMoiZadaniya() {
-    const { data } = await db.from('zadaniya').select().eq('komu', currentPovar).order('created_at', { ascending: false });
-    let html = '<div class="table-wrap"><table><tr><th>От</th><th>Задача</th><th>Статус</th><th>Дата</th></tr>';
-    if (data.length === 0) {
-      html = '<div class="card">Заданий нет. Отдыхай 🧱</div>';
+  async function loadMoiZadaniya(tab = 'active') {
+    let query = db.from('zadaniya')
+      .select()
+      .eq('komu', currentPovar)
+      .order('created_at', { ascending: false });
+
+    if (tab === 'active') {
+      query = query.in('status', ['новое', 'в работе']);
+      document.getElementById('tabActive').className = 'btn btn-green';
+      document.getElementById('tabDone').className = 'btn btn-grey';
+    } else {
+      query = query.eq('status', 'выполнено');
+      document.getElementById('tabActive').className = 'btn btn-grey';
+      document.getElementById('tabDone').className = 'btn btn-green';
+    }
+
+    const { data } = await query;
+    
+    let html = '<div class="table-wrap"><table><tr><th>Задача</th><th>Статус</th><th>Дата</th><th></th></tr>';
+    
+    if (!data || data.length === 0) {
+      html = `<div class="card">${tab === 'active' ? 'Активных заданий нет. Отдыхай 🧱' : 'Выполненных заданий нет'}</div>`;
     } else {
       data.forEach(z => {
+        const color = z.status === 'выполнено' ? '#8e8e93' : '#34c759';
+        const btn = tab === 'active' 
+          ? `<button class="btn btn-green" style="padding:8px 12px; font-size:14px;" onclick="markZadanieDone(${z.id})">Выполнил</button>` 
+          : '';
+        
         html += `<tr>
-          <td>${z.ot_kogo}</td>
           <td>${z.text_zadaniya}</td>
-          <td>${z.status}</td>
+          <td style="color:${color}">${z.status}</td>
           <td>${new Date(z.created_at).toLocaleString('ru-RU', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
+          <td>${btn}</td>
         </tr>`;
       });
       html += '</table></div>';
     }
     document.getElementById('spisok_zadaniy').innerHTML = html;
     showScreen('moi_zadaniya_screen');
+  }
+
+  async function markZadanieDone(id) {
+    if (!confirm('Отметить задание как выполненное?')) return;
+    
+    const { error } = await db.from('zadaniya')
+      .update({ status: 'выполнено' })
+      .eq('id', id);
+    
+    if (error) return alert('Ошибка: ' + error.message);
+    
+    alert('Готово!');
+    loadMoiZadaniya('active');
+    updateZadanieBadge();
+  }
+
+  async function updateZadanieBadge() {
+    if (!currentPovar) return;
+    
+    const { count } = await db.from('zadaniya')
+      .select('*', { count: 'exact', head: true })
+      .eq('komu', currentPovar)
+      .eq('status', 'новое');
+    
+    const badge = document.getElementById('zadanieBadge');
+    if (count > 0) {
+      badge.style.display = 'inline';
+      badge.innerText = count;
+    } else {
+      badge.style.display = 'none';
+    }
   }
 
   async function savePrihod() {
@@ -436,70 +496,4 @@
         <td class="kg">${z.kg}</td>
         <td>${z.comment || '-'}</td>
         <td>${z.otvetstvenniy}</td>
-        <td>${new Date(z.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})}</td>
-      </tr>`;
-    });
-    html += `<tr><td><b>ИТОГО</b></td><td class="kg"><b>${itogo.toFixed(2)}</b></td><td colspan="3"></td></tr></table></div>`;
-    if (data.length === 0) html = '<div class="card">Списаний за сегодня нет</div>';
-
-    document.getElementById('otchet_spisanie_table').innerHTML = html;
-    showScreen('otchet_spisanie');
-  }
-
-  async function pokazatMesyacnyyOtchet() {
-    const picker = document.getElementById('mesyac_picker');
-    if (!picker.value) {
-      const now = new Date();
-      picker.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    }
-
-    const [year, month] = picker.value.split('-');
-    const start = `${year}-${month}-01`;
-    const end = new Date(year, month, 1).toISOString().split('T')[0];
-
-    document.getElementById('mesyac_title').innerText = `Отчёт за ${month}.${year}`;
-
-    const { data } = await db.from('sklad_zapisi')
-   .select('*')
-   .gte('created_at', start)
-   .lt('created_at', end);
-
-    const itogi = {};
-    data.forEach(z => {
-      const name = z.tovar.replace(' [ОТХОДЫ]','').replace(' [СПИСАНИЕ]','');
-      if (!itogi[name]) itogi[name] = { prihod:0, rashod:0, othody:0, spisanie:0 };
-      if (z.tip === 'приход') itogi[name].prihod += z.kg;
-      if (z.tip === 'расход' &&!z.tovar.includes('[ОТХОДЫ]')) itogi[name].rashod += z.kg;
-      if (z.tip === 'расход' && z.tovar.includes('[ОТХОДЫ]')) itogi[name].othody += z.kg;
-      if (z.tip === 'списание') itogi[name].spisanie += z.kg;
-    });
-
-    let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>Приход</th><th>Расход</th><th>Отходы</th><th>Списание</th><th>Остаток</th></tr>';
-    for (let tovar in itogi) {
-      const i = itogi[tovar];
-      const ostatok = i.prihod - i.rashod - i.othody - i.spisanie;
-      html += `<tr>
-        <td>${tovar}</td>
-        <td class="kg">${i.prihod.toFixed(2)}</td>
-        <td class="kg">${i.rashod.toFixed(2)}</td>
-        <td class="kg" style="color:#ff3b30">${i.othody.toFixed(2)}</td>
-        <td class="kg" style="color:#ff9500">${i.spisanie.toFixed(2)}</td>
-        <td class="kg" style="color:${ostatok>=0?'#34c759':'#ff3b30'}">${ostatok.toFixed(2)}</td>
-      </tr>`;
-    }
-    html += '</table></div>';
-    if (Object.keys(itogi).length === 0) html = '<div class="card">Данных за этот месяц нет</div>';
-
-    document.getElementById('mesyac_table').innerHTML = html;
-    showScreen('mesyac_otchet');
-  }
-
-  function logout() {
-    currentUser = null;
-    currentPovar = null;
-    document.getElementById('pin').value = '';
-    showScreen('login');
-  }
-</script>
-</body>
-</html>
+        <td>${new Date(z.created_at).toLocaleTimeString('ru-RU', {hour:'2-
