@@ -22,6 +22,7 @@
     .kg { text-align: right; font-weight: bold; }
     .zadanie { background: #2c2c2e; padding: 15px; border-radius: 12px; margin: 10px 0; }
     .card { background: #2c2c2e; padding: 15px; border-radius: 12px; margin: 10px 0; }
+    .table-wrap { overflow-x: auto; } /* Чтобы таблица скроллилась на телефоне */
   </style>
 </head>
 <body>
@@ -263,10 +264,10 @@
       return;
     }
 
-    // 2. Записываем заготовку в морозилку
+    // 2. Записываем заготовку
     const { error: err2 } = await db.from('zagotovki').insert({
       produkt: produkt,
-      iz_syrya: syrye + ' + syrye_kg + ' кг',
+      iz_syrya: syrye + ' ' + syrye_kg + ' кг',
       kolvo_kg: produkt_kg,
       sdelal_kto: kto
     });
@@ -288,14 +289,24 @@
       return;
     }
     
-    let html = '<h2>Заготовки в морозилке</h2>';
+    let html = '<h2>Заготовки на базе</h2>';
+    
     if (data.length === 0) {
       html += '<div class="card">Пока пусто</div>';
     } else {
+      html += '<div class="table-wrap"><table><tr><th>Продукт</th><th>Кол-во</th><th>Из чего</th><th>Кто</th><th>Дата</th></tr>';
       data.forEach(z => {
-        html += `<div class="card"><b>${z.produkt}</b> | ${z.kolvo_kg} кг<br>Из: ${z.iz_syrya}<br>Сделал: ${z.sdelal_kto}<br><small>${new Date(z.created_at).toLocaleString('ru-RU')}</small></div>`;
+        html += `<tr>
+          <td>${z.produkt}</td>
+          <td class="kg">${z.kolvo_kg} кг</td>
+          <td>${z.iz_syrya}</td>
+          <td>${z.sdelal_kto}</td>
+          <td>${new Date(z.created_at).toLocaleString('ru-RU', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
+        </tr>`;
       });
+      html += '</table></div>';
     }
+    
     html += '<button class="btn btn-secondary" onclick="showScreen(\'shef\')">НАЗАД</button>';
     
     document.getElementById('shef_zagotovki').innerHTML = html;
