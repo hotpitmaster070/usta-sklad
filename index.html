@@ -115,6 +115,10 @@
 
 <div id="moi_zadaniya_screen" class="screen">
   <h2>Мои задания</h2>
+  <div style="display:flex; gap:8px; margin-bottom:15px;">
+    <button id="tabActive" class="btn btn-green" onclick="loadMoiZadaniya('active')">Активные</button>
+    <button id="tabDone" class="btn btn-grey" onclick="loadMoiZadaniya('done')">Выполненные</button>
+  </div>
   <div id="spisok_zadaniy"></div>
   <button class="btn btn-grey" onclick="showScreen('povar')">НАЗАД</button>
 </div>
