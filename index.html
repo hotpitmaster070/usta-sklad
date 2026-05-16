@@ -596,6 +596,102 @@
       document.getElementById('shef_zagotovki').innerHTML = html;
     }
         }
+  async function pokazatOtchetSpisanie() {
+  const { data } = await db.from('sklad_zapisi').select('*').eq('tip', 'списание').order('created_at', { ascending: false });
+
+  let html = '<h2>Отчёт по списанию</h2><div class="table-wrap"><table><tr><th>Товар</th><th>Кг</th><th>Дата</th><th>Коммент</th></tr>';
+
+  if (data.length === 0) {
+    html += '<tr><td colspan="4">Списаний нет</td></tr>';
+  } else {
+    data.forEach(z => {
+      html += `<tr>
+        <td>${z.tovar}</td>
+        <td>${z.kg} кг</td>
+        <td>${new Date(z.created_at).toLocaleDateString('ru')}</td>
+        <td>${z.comment || ''}</td>
+      </tr>`;
+    });
+  }
+
+  html += '</table><button class="btn btn-secondary" onclick="showScreen(\'shef\')">НАЗАД</button></div>';
+  document.getElementById('shef_zagotovki').innerHTML = html;
+  showScreen('shef_zagotovki');
+}
+
+async function pokazatMesyacnyyOtchet() {
+  const now = new Date();
+  const startDefault = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const endDefault = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+  let html = `<h2>Отчёт за месяц</h2>
+  <div style="display:flex; gap:10px; margin-bottom:15px;">
+    <input type="date" id="date_start" value="${startDefault}" class="input">
+    <input type="date" id="date_end" value="${endDefault}" class="input">
+    <button class="btn" onclick="zagruzitMesyacnyyOtchet()">Показать</button>
+  </div>
+  <div id="tablitsa_otcheta">Загрузка...</div>
+  <div style="display:flex; gap:10px; margin-top:15px;">
+    <button class="btn btn-secondary" onclick="showScreen('shef')">НАЗАД</button>
+    <button class="btn" onclick="eksportExcel()">Скачать Excel</button>
+  </div>`;
+
+  document.getElementById('shef_zagotovki').innerHTML = html;
+  showScreen('shef_zagotovki');
+  zagruzitMesyacnyyOtchet();
+}
+
+async function zagruzitMesyacnyyOtchet() {
+  const start = document.getElementById('date_start').value;
+  const end = document.getElementById('date_end').value;
+
+  const { data } = await db.from('sklad_zapisi')
+  .select('*')
+  .gte('created_at', start + 'T00:00:00')
+  .lte('created_at', end + 'T23:59:59');
+
+  let svedeniya = {};
+  let itogo = { prihod: 0, rashod: 0, spisanie: 0 };
+
+  data.forEach(z => {
+    if (!svedeniya[z.tovar]) svedeniya[z.tovar] = { prihod: 0, rashod: 0, spisanie: 0 };
+    svedeniya[z.tovar][z.tip] += parseFloat(z.kg);
+    itogo[z.tip] += parseFloat(z.kg);
+  });
+
+  let html = `<table id="tablitsa_excel"><tr><th>Товар</th><th>Приход</th><th>Расход</th><th>Списание</th></tr>`;
+
+  for (let tovar in svedeniya) {
+    html += `<tr>
+      <td>${tovar}</td>
+      <td>${svedeniya[tovar].prihod.toFixed(2)}</td>
+      <td>${svedeniya[tovar].rashod.toFixed(2)}</td>
+      <td style="color:#ff3b30">${svedeniya[tovar].spisanie.toFixed(2)}</td>
+    </tr>`;
+  }
+
+  html += `<tr style="font-weight:bold; background:#333;">
+    <td>ИТОГО</td>
+    <td>${itogo.prihod.toFixed(2)}</td>
+    <td>${itogo.rashod.toFixed(2)}</td>
+    <td style="color:#ff3b30">${itogo.spisanie.toFixed(2)}</td>
+  </tr></table>`;
+
+  document.getElementById('tablitsa_otcheta').innerHTML = html;
+}
+
+function eksportExcel() {
+  let table = document.getElementById('tablitsa_excel');
+  if (!table) return alert('Сначала нажми "Показать"');
+
+  let html = table.outerHTML.replace(/ /g, '%20');
+  let filename = 'otchet_' + new Date().toISOString().split('T')[0] + '.xls';
+
+  let downloadLink = document.createElement('a');
+  downloadLink.href = 'data:application/vnd.ms-excel,' + html;
+  downloadLink.download = filename;
+  downloadLink.click();
+}
 
   function logout() {
     currentUser = null;
