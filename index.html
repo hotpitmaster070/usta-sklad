@@ -617,59 +617,50 @@
   }
 
 async function startInventarizatsiya() {
-const { data } = await db.from('sklad_zapisi').select();
-const ostatki = {};
-data.forEach(z => {
-if (!ostatki[z.tovar]) ostatki[z.tovar] = 0;
-if (z.tip === 'приход') ostatki[z.tovar] += z.kg;
-if (z.tip === 'расход' || z.tip === 'списание') ostatki[z.tovar] -= z.kg;
-});
+  const { data } = await db.from('sklad_zapisi').select('*');
+  const ostatki = {};
 
-inventarizatsiyaData = ostatki;
-const today = new Date().toLocaleDateString('ru-RU');
-document.getElementById('inv_date').innerText = today;
+  data.forEach(z => {
+    if (!ostatki[z.tovar]) ostatki[z.tovar] = 0;
+    if (z.tip === 'приход') ostatki[z.tovar] += parseFloat(z.kg);
+    if (z.tip === 'расход' || z.tip === 'списание') ostatki[z.tovar] -= parseFloat(z.kg);
+  });
 
-let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>Факт, кг</th></tr>';
-for (let tovar in ostatki) {
-if (ostatki[tovar] > 0.001) {
-html += `<tr>
-<td>${tovar}</td>
-<td><input type="number" id="inv_${tovar}" value="${ostatki[tovar].toFixed(2)}" step="0.01" style="width:100px; text-align:right;"></td>
-</tr>`;
-}
-} // ← вот эта скобка закрывает for
+  let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>По системе</th><th>Факт</th></tr>';
 
-html += '</table></div>'; // ← а это уже вне цикла
+  for (let tovar in ostatki) {
+    if (ostatki[tovar] > 0.001) {
+      html += `<tr>
+        <td>${tovar}</td>
+        <td>${ostatki[tovar].toFixed(2)} кг</td>
+        <td><input type="number" id="fact_${tovar}" placeholder="Факт"></td>
+      </tr>`;
+    }
+  }
 
-if (Object.keys(ostatki).length === 0) {
-html = '<div class="card">Склад пустой</div>';
-}
-
-document.getElementById('inv_table').innerHTML = html;
-showScreen('inventarizatsiya_screen');
+  html += '</table><button class="btn" onclick="sohranitInventarizatsiyu()">Сохранить</button></div>';
+  document.getElementById('content').innerHTML = html;
 }
 
 async function sohranitInventarizatsiyu() {
-const now = new Date();
-const mesyac = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const inputs = document.querySelectorAll('input[id^="fact_"]');
 
-for (let tovar in inventarizatsiyaData) {
-const fakt = parseFloat(document.getElementById(`inv_${tovar}`).value) || 0;
-const raznitsa = fakt - inventarizatsiyaData[tovar];
+  for (let input of inputs) {
+    const tovar = input.id.replace('fact_', '');
+    const fact = parseFloat(input.value);
 
-if (Math.abs(raznitsa) > 0.001) {
-await db.from('sklad_zapisi').insert({
-tovar: tovar + ' [ИНВЕНТАРИЗАЦИЯ]',
-kg: Math.abs(raznitsa),
-tip: raznitsa > 0? 'приход' : 'списание',
-otvetstvenniy: currentUser.name,
-comment: `Инвентаризация за ${mesyac}. Разница: ${raznitsa.toFixed(2)}`
-});
-}
-}
+    if (!isNaN(fact)) {
+      await db.from('sklad_zapisi').insert({
+        tovar: tovar,
+        kg: fact,
+        tip: 'инвентаризация',
+        comment: 'Инвентаризация'
+      });
+    }
+  }
 
-alert('Инвентаризация сохранена! Месяц закрыт.');
-showScreen('shef');
+  alert('Сохранено!');
+  showScreen('shef');
 }
 
 function logout() {
