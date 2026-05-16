@@ -544,24 +544,58 @@
 
   async function sohranitInventarizatsiyu() {
     const inputs = document.querySelectorAll('input[id^="fact_"]');
+    let rasxozhdeniya = [];
+    let html = '<h2>Расхождения</h2><div class="table-wrap"><table><tr><th>Товар</th><th>По системе</th><th>Факт</th><th>Разница</th></tr>';
 
+    const rows = document.querySelectorAll('#shef_zagotovki table tr');
+    
     for (let input of inputs) {
       const tovar = input.id.replace('fact_', '');
       const fact = parseFloat(input.value);
-
+      
       if (!isNaN(fact)) {
+        let poSisteme = 0;
+        rows.forEach(row => {
+          if (row.cells[0] && row.cells[0].innerText === tovar) {
+            poSisteme = parseFloat(row.cells[1].innerText);
+          }
+        });
+
+        const raznitsa = +(fact - poSisteme).toFixed(3);
+        
+        if (raznitsa!== 0) {
+          rasxozhdeniya.push({ tovar, raznitsa });
+          
+          const color = raznitsa > 0? '#34c759' : '#ff3b30';
+          const znak = raznitsa > 0? '+' : '';
+          
+          html += `<tr>
+            <td>${tovar}</td>
+            <td>${poSisteme.toFixed(2)} кг</td>
+            <td>${fact.toFixed(2)} кг</td>
+            <td style="color:${color}; font-weight:bold;">${znak}${raznitsa} кг</td>
+          </tr>`;
+        }
+
         await db.from('sklad_zapisi').insert({
           tovar: tovar,
-          kg: fact,
-          tip: 'инвентаризация',
-          comment: 'Инвентаризация'
+          kg: Math.abs(raznitsa),
+          tip: raznitsa > 0? 'приход' : 'списание',
+          comment: 'Инвентаризация',
+          otvetstvenniy: currentUser.name
         });
       }
     }
 
-    alert('Сохранено!');
-    showScreen('shef');
-  }
+    html += '</table></div><button class="btn" onclick="showScreen(\'shef\')">ГОТОВО</button>';
+
+    if (rasxozhdeniya.length === 0) {
+      alert('Расхождений нет! Всё сходится ✅');
+      showScreen('shef');
+    } else {
+      document.getElementById('shef_zagotovki').innerHTML = html;
+    }
+        }
 
   function logout() {
     currentUser = null;
