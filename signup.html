@@ -18,9 +18,10 @@
   }
   button {
     width: 100%; padding: 14px; background: #4caf50; color: white; border: none;
-    border-radius: 8px; font-size: 16px; font-weight: 600;
+    border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;
   }
   button:disabled { background: #666; }
+  #msg { margin-top: 12px; text-align: center; color: #aaa; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -45,26 +46,52 @@ const supabase = window.supabase.createClient(
 document.getElementById('signup').onsubmit = async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn');
+  const msg = document.getElementById('msg');
   btn.disabled = true;
+  msg.textContent = 'Регистрирую...';
 
   const restaurant = document.getElementById('restaurant').value.trim();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
 
-  const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-  if (authError) { alert('Ошибка: ' + authError.message); btn.disabled = false; return; }
+  try {
+    // 1. Создаём пользователя в auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+    if (authError) throw authError;
+    const userId = authData.user.id;
 
-  const { error: dbError } = await supabase.from('clients').insert([{
-    user_id: authData.user.id,
-    name: restaurant,
-    login: email,
-    password: 'supabase_auth'
-  }]);
-  
-  if (dbError) { alert('Ошибка: ' + dbError.message); btn.disabled = false; return; }
+    // 2. Создаём организацию
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .insert({ name: restaurant })
+      .select()
+      .single();
+    if (orgError) throw orgError;
 
-  alert('Готово!');
-  window.location.href = 'index.html';
+    // 3. Создаём профиль в clients
+    const { error: clientError } = await supabase.from('clients').insert({
+      id: userId,
+      org_id: org.id,
+      name: restaurant
+    });
+    if (clientError) throw clientError;
+
+    // 4. Делаем пользователя owner
+    const { error: membError } = await supabase.from('memberships').insert({
+      user_id: userId,
+      org_id: org.id,
+      role: 'owner'
+    });
+    if (membError) throw membError;
+
+    msg.textContent = 'Готово! Перенаправляю...';
+    setTimeout(() => window.location.href = 'chef.html', 800);
+
+  } catch (err) {
+    msg.textContent = '';
+    alert('Ошибка: ' + err.message);
+    btn.disabled = false;
+  }
 };
 </script>
 </body>
