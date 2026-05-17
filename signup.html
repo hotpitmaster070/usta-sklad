@@ -56,7 +56,7 @@
       <label>Пароль</label>
       <input id="password" type="password" placeholder="Минимум 6 символов" minlength="6" required>
 
-      <button id="btn" type="submit">Зарегистрироваться</button>
+      <button id="btn" type="button">Зарегистрироваться</button>
     </form>
     <div id="msg"></div>
   </div>
@@ -77,8 +77,9 @@ document.getElementById('role').onchange = (e) => {
   }
 };
 
-document.getElementById('signup').onsubmit = async (e) => {
+document.getElementById('btn').addEventListener('click', async (e) => {
   e.preventDefault();
+  
   const btn = document.getElementById('btn');
   const msg = document.getElementById('msg');
   btn.disabled = true;
@@ -135,7 +136,7 @@ document.getElementById('signup').onsubmit = async (e) => {
     msg.style.color = '#ff3b30';
     btn.disabled = false;
   }
-};
+});
 </script>
 </body>
 </html>
