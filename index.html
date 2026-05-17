@@ -200,7 +200,7 @@
   }
 
   window.onload = async () => {
-    const { data: { session } = await db.auth.getSession();
+    const { data: { session } } = await db.auth.getSession();
     if (session) { document.getElementById('email').value = session.user.email; login(); }
   }
 
@@ -370,4 +370,4 @@
   function pokazatMesyacnyyOtchet() { alert('Функция в разработке'); }
 </script>
 </body>
-    </html>
+      </html>
