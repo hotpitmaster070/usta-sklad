@@ -20,9 +20,10 @@
     width: 100%; padding: 14px; background: #4caf50; color: white; border: none;
     border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;
   }
-  button:disabled { background: #666; }
-  #msg { margin-top: 12px; text-align: center; color: #aaa; }
+  button:disabled { background: #666; cursor: not-allowed; }
+  #msg { margin-top: 12px; text-align: center; color: #aaa; font-size: 14px; }
   label { display: block; margin-bottom: 6px; color: #8e8e93; font-size: 14px; }
+  h2 { margin: 0 0 20px 0; text-align: center; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -82,6 +83,7 @@ document.getElementById('signup').onsubmit = async (e) => {
   const msg = document.getElementById('msg');
   btn.disabled = true;
   msg.textContent = 'Регистрирую...';
+  msg.style.color = '#aaa';
 
   const role = document.getElementById('role').value;
   const restaurant = document.getElementById('restaurant').value.trim();
@@ -113,7 +115,6 @@ document.getElementById('signup').onsubmit = async (e) => {
       if (orgError) throw orgError;
       final_org_id = org.id;
       msg.textContent = 'Организация создана. ID: ' + final_org_id;
-      alert('Скопируй ID организации и дай его поварам:\n' + final_org_id);
     }
 
     // 3. Добавляем в memberships
@@ -124,13 +125,14 @@ document.getElementById('signup').onsubmit = async (e) => {
     });
     if (membError) throw membError;
 
-    // 4. Триггер сам создаст запись в clients
+    // 4. Готово
     msg.textContent = 'Готово! Перенаправляю на вход...';
-    setTimeout(() => window.location.href = 'index.html', 1200);
+    msg.style.color = '#4caf50';
+    setTimeout(() => window.location.href = 'index.html', 1500);
 
   } catch (err) {
-    msg.textContent = '';
-    alert('Ошибка: ' + err.message);
+    msg.textContent = 'Ошибка: ' + err.message;
+    msg.style.color = '#ff3b30';
     btn.disabled = false;
   }
 };
