@@ -15,7 +15,7 @@
     min-height: 100vh;
     margin: 0;
   }
-.box {
+  .box {
     background: #2a2a2a;
     padding: 30px;
     border-radius: 12px;
@@ -46,6 +46,7 @@
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
+    cursor: pointer;
   }
   button:disabled {
     background: #666;
@@ -88,26 +89,32 @@ try {
     const msg = document.getElementById('msg');
     btn.disabled = true;
     msg.textContent = 'Регистрирую...';
+    msg.style.color = '#fff';
 
     const restaurant = document.getElementById('restaurant').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+      // 1. Создаем пользователя в Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({ 
+        email, 
+        password 
+      });
+      
       if (authError) throw authError;
+      if (!authData.user) throw new Error('Пользователь не создался');
+      
       alert('Auth OK: ' + authData.user.id);
 
+      // 2. Вставляем в clients. Используем колонку name, а не restaurant_name
       const { error: dbError } = await supabase.from('clients').insert([{
         user_id: authData.user.id,
-        tenant_id: authData.user.id,
         name: restaurant,
         login: email,
-        password: 'supabase_auth',
-        role: 'owner',
-        status: 'active',
-        paid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
+        password: 'supabase_auth'
       }]);
+      
       if (dbError) throw dbError;
       alert('Insert OK');
 
