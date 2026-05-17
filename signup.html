@@ -62,81 +62,100 @@
   </div>
 
 <script>
-const supabase = window.supabase.createClient(
-  'https://xljogkyropyocvuuodfl.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'
-);
-
-document.getElementById('role').onchange = (e) => {
-  if (e.target.value === 'owner') {
-    document.getElementById('restaurant_block').style.display = 'block';
-    document.getElementById('org_block').style.display = 'none';
-  } else {
-    document.getElementById('restaurant_block').style.display = 'none';
-    document.getElementById('org_block').style.display = 'block';
+try {
+  if (!window.supabase) {
+    throw new Error('Supabase не загрузился. Проверь интернет');
   }
-};
 
-document.getElementById('btn').addEventListener('click', async (e) => {
-  e.preventDefault();
-  
-  const btn = document.getElementById('btn');
-  const msg = document.getElementById('msg');
-  btn.disabled = true;
-  msg.textContent = 'Регистрирую...';
-  msg.style.color = '#aaa';
+  const supabase = window.supabase.createClient(
+    'https://xljogkyropyocvuuodfl.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'
+  );
 
-  const role = document.getElementById('role').value;
-  const restaurant = document.getElementById('restaurant').value.trim();
-  const org_id = document.getElementById('org_id').value.trim();
-  const name = document.getElementById('name').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-
-  try {
-    // 1. Создаём пользователя в auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: { data: { name: name } }
-    });
-    if (authError) throw authError;
-    const userId = authData.user.id;
-
-    let final_org_id = org_id;
-
-    // 2. Если шеф - создаём организацию
-    if (role === 'owner') {
-      if (!restaurant) throw new Error('Введи название ресторана');
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({ name: restaurant })
-        .select()
-        .single();
-      if (orgError) throw orgError;
-      final_org_id = org.id;
-      msg.textContent = 'Организация создана. ID: ' + final_org_id;
+  document.getElementById('role').onchange = (e) => {
+    if (e.target.value === 'owner') {
+      document.getElementById('restaurant_block').style.display = 'block';
+      document.getElementById('org_block').style.display = 'none';
+    } else {
+      document.getElementById('restaurant_block').style.display = 'none';
+      document.getElementById('org_block').style.display = 'block';
     }
+  };
 
-    // 3. Добавляем в memberships
-    const { error: membError } = await supabase.from('memberships').insert({
-      user_id: userId,
-      org_id: final_org_id,
-      role: role
-    });
-    if (membError) throw membError;
+  document.getElementById('btn').addEventListener('click', async () => {
+    const btn = document.getElementById('btn');
+    const msg = document.getElementById('msg');
+    btn.disabled = true;
+    msg.textContent = 'Регистрирую...';
+    msg.style.color = '#aaa';
 
-    // 4. Готово
-    msg.textContent = 'Готово! Перенаправляю на вход...';
-    msg.style.color = '#4caf50';
-    setTimeout(() => window.location.href = 'index.html', 1500);
+    try {
+      const role = document.getElementById('role').value;
+      const restaurant = document.getElementById('restaurant').value.trim();
+      const org_id = document.getElementById('org_id').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
 
-  } catch (err) {
-    msg.textContent = 'Ошибка: ' + err.message;
+      if (!email || !password || !name) {
+        throw new Error('Заполни имя, email и пароль');
+      }
+      if (password.length < 6) {
+        throw new Error('Пароль минимум 6 символов');
+      }
+      if (role === 'owner' && !restaurant) {
+        throw new Error('Введи название ресторана');
+      }
+      if (role === 'povar' && !org_id) {
+        throw new Error('Вставь ID организации');
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: { data: { name: name } }
+      });
+      if (authError) throw authError;
+      
+      const userId = authData.user.id;
+      let final_org_id = org_id;
+
+      if (role === 'owner') {
+        const { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .insert({ name: restaurant })
+          .select()
+          .single();
+        if (orgError) throw orgError;
+        final_org_id = org.id;
+        msg.textContent = 'Организация создана. ID: ' + final_org_id;
+      }
+
+      const { error: membError } = await supabase.from('memberships').insert({
+        user_id: userId,
+        org_id: final_org_id,
+        role: role
+      });
+      if (membError) throw membError;
+
+      msg.textContent = 'Готово! Перенаправляю на вход...';
+      msg.style.color = '#4caf50';
+      setTimeout(() => window.location.href = 'index.html', 1500);
+
+    } catch (err) {
+      msg.textContent = 'Ошибка: ' + err.message;
+      msg.style.color = '#ff3b30';
+      btn.disabled = false;
+    }
+  });
+
+} catch (e) {
+  const msg = document.getElementById('msg');
+  if (msg) {
+    msg.textContent = 'Критическая ошибка: ' + e.message;
     msg.style.color = '#ff3b30';
-    btn.disabled = false;
   }
-});
+}
 </script>
 </body>
-</html>
+  </html>
