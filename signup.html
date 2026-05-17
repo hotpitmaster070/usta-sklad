@@ -71,56 +71,60 @@
   </div>
 
 <script>
+alert('JS запустился');
+
 const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+try {
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  alert('Supabase подключен');
 
-document.getElementById('signup').onsubmit = async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('btn');
-  const msg = document.getElementById('msg');
+  document.getElementById('signup').onsubmit = async (e) => {
+    e.preventDefault();
+    alert('Кнопка нажата');
 
-  btn.disabled = true;
-  msg.textContent = 'Регистрирую...';
-  msg.style.color = '#aaa';
+    const btn = document.getElementById('btn');
+    const msg = document.getElementById('msg');
+    btn.disabled = true;
+    msg.textContent = 'Регистрирую...';
 
-  const restaurant = document.getElementById('restaurant').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
+    const restaurant = document.getElementById('restaurant').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
 
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email,
-      password: password
-    });
-    if (authError) throw authError;
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+      if (authError) throw authError;
+      alert('Auth OK: ' + authData.user.id);
 
-    const { error: dbError } = await supabase.from('clients').insert([{
-      user_id: authData.user.id,
-      tenant_id: authData.user.id,
-      name: restaurant,
-      login: email,
-      password: 'supabase_auth',
-      role: 'owner',
-      status: 'active',
-      paid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
-    }]);
-    if (dbError) throw dbError;
+      const { error: dbError } = await supabase.from('clients').insert([{
+        user_id: authData.user.id,
+        tenant_id: authData.user.id,
+        name: restaurant,
+        login: email,
+        password: 'supabase_auth',
+        role: 'owner',
+        status: 'active',
+        paid_until: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
+      }]);
+      if (dbError) throw dbError;
+      alert('Insert OK');
 
-    msg.textContent = 'Готово! Переход...';
-    msg.style.color = '#4caf50';
+      msg.textContent = 'Готово! Переход...';
+      msg.style.color = '#4caf50';
+      setTimeout(() => { window.location.href = 'index.html'; }, 1000);
 
-    setTimeout(() => {
-      window.location.href = 'index.html';
-    }, 1000);
-
-  } catch (err) {
-    msg.textContent = 'Ошибка: ' + err.message;
-    msg.style.color = '#ff3b30';
-    btn.disabled = false;
-  }
-};
+    } catch (err) {
+      alert('Ошибка: ' + err.message);
+      msg.textContent = 'Ошибка: ' + err.message;
+      msg.style.color = '#ff3b30';
+      btn.disabled = false;
+    }
+  };
+} catch(e) {
+  alert('Ошибка загрузки Supabase: ' + e.message);
+}
 </script>
 </body>
 </html>
