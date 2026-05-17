@@ -12,7 +12,7 @@
   .box {
     background: #2a2a2a; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;
   }
-  input {
+  input, select {
     width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #444;
     border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 16px; box-sizing: border-box;
   }
@@ -22,16 +22,39 @@
   }
   button:disabled { background: #666; }
   #msg { margin-top: 12px; text-align: center; color: #aaa; }
+  label { display: block; margin-bottom: 6px; color: #8e8e93; font-size: 14px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="box">
-    <h2>Регистрация ресторана</h2>
+    <h2>Регистрация</h2>
     <form id="signup">
-      <input id="restaurant" type="text" placeholder="Название ресторана" required>
-      <input id="email" type="email" placeholder="Email" required>
-      <input id="password" type="password" placeholder="Пароль" minlength="6" required>
+      <label>Роль</label>
+      <select id="role" required>
+        <option value="owner">Шеф / Владелец</option>
+        <option value="povar">Повар</option>
+      </select>
+
+      <div id="restaurant_block">
+        <label>Название ресторана</label>
+        <input id="restaurant" type="text" placeholder="Шашлычная №1">
+      </div>
+
+      <div id="org_block" style="display:none;">
+        <label>ID организации шефа</label>
+        <input id="org_id" type="text" placeholder="Вставь ID от шефа">
+      </div>
+
+      <label>Имя</label>
+      <input id="name" type="text" placeholder="Али" required>
+
+      <label>Email</label>
+      <input id="email" type="email" placeholder="email@mail.com" required>
+
+      <label>Пароль</label>
+      <input id="password" type="password" placeholder="Минимум 6 символов" minlength="6" required>
+
       <button id="btn" type="submit">Зарегистрироваться</button>
     </form>
     <div id="msg"></div>
@@ -43,6 +66,16 @@ const supabase = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'
 );
 
+document.getElementById('role').onchange = (e) => {
+  if (e.target.value === 'owner') {
+    document.getElementById('restaurant_block').style.display = 'block';
+    document.getElementById('org_block').style.display = 'none';
+  } else {
+    document.getElementById('restaurant_block').style.display = 'none';
+    document.getElementById('org_block').style.display = 'block';
+  }
+};
+
 document.getElementById('signup').onsubmit = async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn');
@@ -50,42 +83,50 @@ document.getElementById('signup').onsubmit = async (e) => {
   btn.disabled = true;
   msg.textContent = 'Регистрирую...';
 
+  const role = document.getElementById('role').value;
   const restaurant = document.getElementById('restaurant').value.trim();
+  const org_id = document.getElementById('org_id').value.trim();
+  const name = document.getElementById('name').value.trim();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
 
   try {
     // 1. Создаём пользователя в auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+    const { data: authData, error: authError } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: { data: { name: name } }
+    });
     if (authError) throw authError;
     const userId = authData.user.id;
 
-    // 2. Создаём организацию
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({ name: restaurant })
-      .select()
-      .single();
-    if (orgError) throw orgError;
+    let final_org_id = org_id;
 
-    // 3. Создаём профиль в clients
-    const { error: clientError } = await supabase.from('clients').insert({
-      id: userId,
-      org_id: org.id,
-      name: restaurant
-    });
-    if (clientError) throw clientError;
+    // 2. Если шеф - создаём организацию
+    if (role === 'owner') {
+      if (!restaurant) throw new Error('Введи название ресторана');
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .insert({ name: restaurant })
+        .select()
+        .single();
+      if (orgError) throw orgError;
+      final_org_id = org.id;
+      msg.textContent = 'Организация создана. ID: ' + final_org_id;
+      alert('Скопируй ID организации и дай его поварам:\n' + final_org_id);
+    }
 
-    // 4. Делаем пользователя owner
+    // 3. Добавляем в memberships
     const { error: membError } = await supabase.from('memberships').insert({
       user_id: userId,
-      org_id: org.id,
-      role: 'owner'
+      org_id: final_org_id,
+      role: role
     });
     if (membError) throw membError;
 
-    msg.textContent = 'Готово! Перенаправляю...';
-    setTimeout(() => window.location.href = 'chef.html', 800);
+    // 4. Триггер сам создаст запись в clients
+    msg.textContent = 'Готово! Перенаправляю на вход...';
+    setTimeout(() => window.location.href = 'index.html', 1200);
 
   } catch (err) {
     msg.textContent = '';
