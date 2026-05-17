@@ -93,16 +93,10 @@
     <h3>Взял со склада:</h3>
     <input type="text" id="z_syrye" placeholder="Что взял: Туша баранины">
     <input type="number" id="z_syrye_kg" placeholder="Сколько кг взял" step="0.01" oninput="calcMusor()">
-
     <h3>Получилось продуктов:</h3>
     <div id="products_list"></div>
-
     <button class="btn btn-grey" style="margin-top:10px;" onclick="addProductField()">+ ДОБАВИТЬ ПРОДУКТ</button>
-
-    <div id="raschet_musora" style="margin-top:10px; color:#8e8e93;">
-      Мусор рассчитается автоматически
-    </div>
-
+    <div id="raschet_musora" style="margin-top:10px; color:#8e8e93;">Мусор рассчитается автоматически</div>
     <button class="btn btn-green" onclick="sohranitZagotovku()">СОХРАНИТЬ</button>
     <button class="btn btn-secondary" onclick="showScreen('povar')">НАЗАД</button>
   </div>
@@ -171,13 +165,11 @@
   let currentUser = null;
   let currentRole = null;
   let currentOrgId = null;
-  let currentPovar = null;
   let productCount = 0;
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-
     if (id === 'zagotovka_form') {
       document.getElementById('products_list').innerHTML = '';
       productCount = 0;
@@ -190,23 +182,14 @@
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     if (!email || !password) return alert('Введи email и пароль');
-
     const { data: auth, error } = await db.auth.signInWithPassword({ email, password });
     if (error) return alert('Ошибка входа: ' + error.message);
-
     const userId = auth.user.id;
-
-    const { data: membership } = await db.from('memberships')
-      .select('role, org_id')
-      .eq('user_id', userId)
-      .single();
-
+    const { data: membership } = await db.from('memberships').select('role, org_id').eq('user_id', userId).single();
     if (!membership) return alert('Ты не привязан к организации. Обратись к шефу.');
-
     currentUser = auth.user;
     currentRole = membership.role;
     currentOrgId = membership.org_id;
-
     if (currentRole === 'owner' || currentRole === 'chef') {
       showScreen('shef');
     } else {
@@ -233,15 +216,7 @@
 
   function addProductField() {
     productCount++;
-    const html = `
-      <div class="card" id="prod_${productCount}" style="margin-top:10px; position:relative;">
-        <button onclick="removeProduct(${productCount})" style="position:absolute; right:10px; top:10px; background:#ff3b30; border:none; color:#fff; border-radius:50%; width:25px; height:25px; font-size:16px;">×</button>
-        <label>Продукт ${productCount}:</label>
-        <input type="text" id="z_product${productCount}" placeholder="Название продукта">
-        <label>Сколько кг:</label>
-        <input type="number" id="z_kg${productCount}" placeholder="0.00" step="0.01" oninput="calcMusor()">
-      </div>
-    `;
+    const html = `<div class="card" id="prod_${productCount}" style="margin-top:10px; position:relative;"><button onclick="removeProduct(${productCount})" style="position:absolute; right:10px; top:10px; background:#ff3b30; border:none; color:#fff; border-radius:50%; width:25px; height:25px; font-size:16px;">×</button><label>Продукт ${productCount}:</label><input type="text" id="z_product${productCount}" placeholder="Название продукта"><label>Сколько кг:</label><input type="number" id="z_kg${productCount}" placeholder="0.00" step="0.01" oninput="calcMusor()"></div>`;
     document.getElementById('products_list').insertAdjacentHTML('beforeend', html);
   }
 
@@ -254,22 +229,17 @@
     const syrye = parseFloat(document.getElementById('z_syrye_kg').value) || 0;
     let sumProducts = 0;
     document.querySelectorAll('[id^="z_kg"]').forEach(input => {
-      if (!input.id.includes('syrye')) {
-        sumProducts += parseFloat(input.value) || 0;
-      }
+      if (!input.id.includes('syrye')) sumProducts += parseFloat(input.value) || 0;
     });
     const musor = +(syrye - sumProducts).toFixed(3);
-    document.getElementById('raschet_musora').innerText =
-      musor >= 0 ? `Отходы/потери: ${musor} кг` : 'Ошибка: больше чем взял';
+    document.getElementById('raschet_musora').innerText = musor >= 0 ? `Отходы/потери: ${musor} кг` : 'Ошибка: больше чем взял';
   }
 
   async function loadPovarsForZadanie() {
     const { data } = await db.from('clients').select().eq('org_id', currentOrgId);
     const select = document.getElementById('komu_povar');
     select.innerHTML = '';
-    data.forEach(p => {
-      select.innerHTML += `<option value="${p.id}">${p.name}</option>`;
-    });
+    data.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
     showScreen('zadanie_form');
   }
 
@@ -277,13 +247,7 @@
     const komu = document.getElementById('komu_povar').value;
     const text = document.getElementById('text_zadaniya').value;
     if (!text) return alert('Напиши текст задания');
-    const { error } = await db.from('zadaniya').insert({
-      text_zadaniya: text, 
-      komu: komu, 
-      ot_kogo: currentUser.id, 
-      status: 'новое',
-      org_id: currentOrgId
-    });
+    const { error } = await db.from('zadaniya').insert({ text_zadaniya: text, komu: komu, ot_kogo: currentUser.id, status: 'новое', org_id: currentOrgId });
     if (error) return alert('Ошибка: ' + error.message);
     alert('Задание отправлено');
     document.getElementById('text_zadaniya').value = '';
@@ -295,10 +259,7 @@
     const kg = parseFloat(document.getElementById('tovar_kg').value);
     const postavshik = document.getElementById('postavshik').value;
     if (!name || !kg) return alert('Заполни Товар и Вес');
-    const { error } = await db.from('sklad_zapisi').insert({
-      tovar: name, kg: kg, tip: 'приход', postavshik: postavshik, 
-      otvetstvenniy: currentUser.id, org_id: currentOrgId
-    });
+    const { error } = await db.from('sklad_zapisi').insert({ tovar: name, kg: kg, tip: 'приход', postavshik: postavshik, otvetstvenniy: currentUser.id, org_id: currentOrgId });
     if (error) return alert('Ошибка: ' + error.message);
     alert(`Приход сохранён: ${name} ${kg} кг`);
     document.getElementById('tovar_name').value = '';
@@ -315,28 +276,30 @@
       if (z.tip === 'приход') ostatki[z.tovar] += z.kg;
       if (z.tip === 'расход' || z.tip === 'списание') ostatki[z.tovar] -= z.kg;
     });
-
     let html = '<div class="table-wrap"><table><tr><th>Товар</th><th class="kg">Остаток, кг</th></tr>';
-    for (let tovar in ostatki) {
-      html += `<tr><td>${tovar}</td><td class="kg">${ostatki[tovar].toFixed(2)}</td></tr>`;
-    }
+    for (let tovar in ostatki) html += `<tr><td>${tovar}</td><td class="kg">${ostatki[tovar].toFixed(2)}</td></tr>`;
     html += '</table></div>';
     if (Object.keys(ostatki).length === 0) html = 'Склад пустой';
-
     document.getElementById('sklad_table').innerHTML = html;
     showScreen('sklad_screen');
   }
 
-  // ОСТАЛЬНЫЕ ТВОИ ФУНКЦИИ ОСТАЛИСЬ БЕЗ ИЗМЕНЕНИЙ
-  // loadMoiZadaniya, markZadanieDone, saveVzyal, sohranitZagotovku, pokazatZagotovki, 
-  // saveSpisanie, pokazatOtchetSpisanie, pokazatMesyacnyyOtchet, startInventarizatsiya
-  // ...вставь их сюда как были, только добавь .eq('org_id', currentOrgId) в SELECT и org_id: currentOrgId в INSERT
+  async function saveVzyal() {
+    const name = document.getElementById('vzyal_tovar').value;
+    const kg = parseFloat(document.getElementById('vzyal_kg').value);
+    if (!name || !kg) return alert('Заполни Товар и Вес');
+    const { error } = await db.from('sklad_zapisi').insert({ tovar: name, kg: kg, tip: 'расход', otvetstvenniy: currentUser.id, org_id: currentOrgId });
+    if (error) return alert('Ошибка: ' + error.message);
+    alert(`Списано: ${name} ${kg} кг`);
+    document.getElementById('vzyal_tovar').value = '';
+    document.getElementById('vzyal_kg').value = '';
+    showScreen('povar');
+  }
 
   async function sohranitZagotovku() {
     const syrye = document.getElementById('z_syrye').value;
     const syrye_kg = parseFloat(document.getElementById('z_syrye_kg').value);
     if (!syrye || !syrye_kg) return alert('Заполни что взял и сколько');
-
     let products = [];
     let sumProducts = 0;
     for (let i = 1; i <= productCount; i++) {
@@ -349,26 +312,84 @@
       }
     }
     if (products.length === 0) return alert('Добавь хотя бы 1 продукт');
-
-    await db.from('sklad_zapisi').insert({
-      tovar: syrye, kg: syrye_kg, tip: 'расход', 
-      otvetstvenniy: currentUser.id, org_id: currentOrgId
-    });
-
+    await db.from('sklad_zapisi').insert({ tovar: syrye, kg: syrye_kg, tip: 'расход', otvetstvenniy: currentUser.id, org_id: currentOrgId });
     for (let p of products) {
-      await db.from('sklad_zapisi').insert({
-        tovar: p.name, kg: p.kg, tip: 'приход', 
-        otvetstvenniy: currentUser.id, comment: 'Из: ' + syrye, org_id: currentOrgId
-      });
-      await db.from('zagotovki').insert({
-        produkt: p.name, iz_syrya: `${syrye} ${syrye_kg}кг`, kolvo_kg: p.kg, 
-        sdelal_kto: currentUser.id, org_id: currentOrgId
-      });
+      await db.from('sklad_zapisi').insert({ tovar: p.name, kg: p.kg, tip: 'приход', otvetstvenniy: currentUser.id, comment: 'Из: ' + syrye, org_id: currentOrgId });
+      await db.from('zagotovki').insert({ produkt: p.name, iz_syrya: `${syrye} ${syrye_kg}кг`, kolvo_kg: p.kg, sdelal_kto: currentUser.id, org_id: currentOrgId });
     }
-
     alert('Готово!');
+    document.getElementById('z_syrye').value = '';
+    document.getElementById('z_syrye_kg').value = '';
     showScreen('povar');
   }
+
+  async function pokazatZagotovki() {
+    const { data, error } = await db.from('zagotovki').select('*').eq('org_id', currentOrgId).order('created_at', { ascending: false });
+    if (error) return alert('Ошибка загрузки: ' + error.message);
+    let html = '<h2>Заготовки на базе</h2>';
+    if (data.length === 0) html += '<div class="card">Пока пусто</div>';
+    else {
+      html += '<div class="table-wrap"><table><tr><th>Продукт</th><th>Кол-во</th><th>Из чего</th><th>Кто</th><th>Дата</th></tr>';
+      data.forEach(z => {
+        html += `<tr><td>${z.produkt}</td><td class="kg">${z.kolvo_kg} кг</td><td>${z.iz_syrya}</td><td>${z.sdelal_kto}</td><td>${new Date(z.created_at).toLocaleString('ru-RU', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</td></tr>`;
+      });
+      html += '</table></div>';
+    }
+    document.getElementById('shef_zagotovki').innerHTML = html + '<button class="btn btn-grey" onclick="showScreen(\'shef\')">НАЗАД</button>';
+    showScreen('shef_zagotovki');
+  }
+
+  async function loadMoiZadaniya(tab = 'active') {
+    let query = db.from('zadaniya').select().eq('komu', currentUser.id).eq('org_id', currentOrgId).order('created_at', { ascending: false });
+    if (tab === 'active') query = query.in('status', ['новое', 'в работе']);
+    else query = query.in('status', ['подтверждено', 'выполнено']);
+    const { data } = await query;
+    let html = '<div class="table-wrap"><table><tr><th>Задача</th><th>Статус</th><th>Дата</th><th></th></tr>';
+    if (!data || data.length === 0) html = `<div class="card">Заданий нет</div>`;
+    else {
+      data.forEach(z => {
+        const btn = tab === 'active' ? `<button class="btn btn-green" style="padding:8px 12px; font-size:14px;" onclick="markZadanieDone(${z.id})">Выполнил</button>` : '';
+        html += `<tr><td>${z.text_zadaniya}</td><td>${z.status}</td><td>${new Date(z.created_at).toLocaleString('ru-RU')}</td><td>${btn}</td></tr>`;
+      });
+      html += '</table></div>';
+    }
+    document.getElementById('spisok_zadaniy').innerHTML = html;
+    showScreen('moi_zadaniya_screen');
+  }
+
+  async function markZadanieDone(id) {
+    const kgStr = prompt('Сколько кг получилось?', "0");
+    if (!kgStr) return;
+    const kg = parseFloat(kgStr.replace(',', '.'));
+    if (isNaN(kg) || kg <= 0) return alert('Введи корректный вес');
+    await db.from('zadaniya').update({ status: 'подтверждено' }).eq('id', id);
+    alert('Подтверждено!');
+    loadMoiZadaniya('active');
+  }
+
+  async function saveSpisanie() {
+    const tovar = document.getElementById('spis_tovar').value;
+    const kg = parseFloat(document.getElementById('spis_kg').value);
+    const prichina = document.getElementById('spis_prichina').value;
+    const comment = document.getElementById('spis_comment').value;
+    if (!tovar || !kg) return alert('Заполни товар и вес');
+    const { error } = await db.from('sklad_zapisi').insert({ tovar: tovar, kg: kg, tip: 'списание', comment: prichina + ': ' + comment, otvetstvenniy: currentUser.id, org_id: currentOrgId });
+    if (error) return alert('Ошибка: ' + error.message);
+    alert('Списано');
+    showScreen(currentRole==='owner' || currentRole==='chef' ?'shef':'povar');
+  }
+
+  async function pokazatOtchetSpisanie() {
+    const { data } = await db.from('sklad_zapisi').select().eq('tip', 'списание').eq('org_id', currentOrgId);
+    let html = '<div class="table-wrap"><table><tr><th>Товар</th><th>Кг</th><th>Причина</th></tr>';
+    data.forEach(z => html += `<tr><td>${z.tovar}</td><td>${z.kg}</td><td>${z.comment}</td></tr>`);
+    html += '</table></div>';
+    document.getElementById('otchet_spisanie_table').innerHTML = html;
+    showScreen('otchet_spisanie');
+  }
+
+  function startInventarizatsiya() { alert('Функция в разработке'); }
+  function pokazatMesyacnyyOtchet() { alert('Функция в разработке'); }
 
 </script>
 </body>
