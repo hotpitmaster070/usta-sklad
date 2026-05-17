@@ -6,56 +6,21 @@
 <title>Регистрация</title>
 <style>
   body {
-    background: #1a1a1a;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
+    background: #1a1a1a; color: #fff; font-family: sans-serif;
+    display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
   }
   .box {
-    background: #2a2a2a;
-    padding: 30px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 400px;
-  }
-  h2 {
-    margin: 0 0 20px 0;
-    text-align: center;
+    background: #2a2a2a; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px;
   }
   input {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 12px;
-    border: 1px solid #444;
-    border-radius: 8px;
-    background: #1a1a1a;
-    color: #fff;
-    font-size: 16px;
-    box-sizing: border-box;
+    width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #444;
+    border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 16px; box-sizing: border-box;
   }
   button {
-    width: 100%;
-    padding: 14px;
-    background: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
+    width: 100%; padding: 14px; background: #4caf50; color: white; border: none;
+    border-radius: 8px; font-size: 16px; font-weight: 600;
   }
-  button:disabled {
-    background: #666;
-  }
-  #msg {
-    margin-top: 15px;
-    text-align: center;
-    font-size: 14px;
-  }
+  button:disabled { background: #666; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -72,66 +37,35 @@
   </div>
 
 <script>
-alert('JS запустился');
+const supabase = window.supabase.createClient(
+  'https://xljogkyropyocvuuodfl.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'
+);
 
-const SUPABASE_URL = 'https://xljogkyropyocvuuodfl.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs';
+document.getElementById('signup').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
 
-try {
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  alert('Supabase подключен');
+  const restaurant = document.getElementById('restaurant').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
 
-  document.getElementById('signup').onsubmit = async (e) => {
-    e.preventDefault();
-    alert('Кнопка нажата');
+  const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+  if (authError) { alert('Ошибка: ' + authError.message); btn.disabled = false; return; }
 
-    const btn = document.getElementById('btn');
-    const msg = document.getElementById('msg');
-    btn.disabled = true;
-    msg.textContent = 'Регистрирую...';
-    msg.style.color = '#fff';
+  const { error: dbError } = await supabase.from('clients').insert([{
+    user_id: authData.user.id,
+    name: restaurant,
+    login: email,
+    password: 'supabase_auth'
+  }]);
+  
+  if (dbError) { alert('Ошибка: ' + dbError.message); btn.disabled = false; return; }
 
-    const restaurant = document.getElementById('restaurant').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-
-    try {
-      // 1. Создаем пользователя в Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({ 
-        email, 
-        password 
-      });
-      
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Пользователь не создался');
-      
-      alert('Auth OK: ' + authData.user.id);
-
-      // 2. Вставляем в clients. Используем колонку name, а не restaurant_name
-      const { error: dbError } = await supabase.from('clients').insert([{
-        user_id: authData.user.id,
-        name: restaurant,
-        login: email,
-        password: 'supabase_auth'
-      }]);
-      
-      if (dbError) throw dbError;
-      alert('Insert OK');
-
-      msg.textContent = 'Готово! Переход...';
-      msg.style.color = '#4caf50';
-      setTimeout(() => { window.location.href = 'index.html'; }, 1000);
-
-    } catch (err) {
-      alert('Ошибка: ' + err.message);
-      msg.textContent = 'Ошибка: ' + err.message;
-      msg.style.color = '#ff3b30';
-      btn.disabled = false;
-    }
-  };
-} catch(e) {
-  alert('Ошибка загрузки Supabase: ' + e.message);
-}
+  alert('Готово!');
+  window.location.href = 'index.html';
+};
 </script>
 </body>
 </html>
