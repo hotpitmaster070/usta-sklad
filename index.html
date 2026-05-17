@@ -184,34 +184,24 @@
     if (!email || !password) return alert('Введи email и пароль');
     const { data: auth, error } = await db.auth.signInWithPassword({ email, password });
     if (error) return alert('Ошибка входа: ' + error.message);
-    const userId = auth.user.id;
-    const { data: membership } = await db.from('memberships').select('role, org_id').eq('user_id', userId).single();
+    const { data: membership } = await db.from('memberships').select('role, org_id').eq('user_id', auth.user.id).single();
     if (!membership) return alert('Ты не привязан к организации. Обратись к шефу.');
     currentUser = auth.user;
     currentRole = membership.role;
     currentOrgId = membership.org_id;
-    if (currentRole === 'owner' || currentRole === 'chef') {
-      showScreen('shef');
-    } else {
-      document.getElementById('povar_name').innerText = 'Повар';
-      showScreen('povar');
-    }
+    if (currentRole === 'owner' || currentRole === 'chef') showScreen('shef');
+    else { document.getElementById('povar_name').innerText = 'Повар'; showScreen('povar'); }
   }
 
   async function logout() {
     await db.auth.signOut();
-    currentUser = null;
-    currentRole = null;
-    currentOrgId = null;
+    currentUser = null; currentRole = null; currentOrgId = null;
     showScreen('login');
   }
 
   window.onload = async () => {
     const { data: { session } = await db.auth.getSession();
-    if (session) {
-      document.getElementById('email').value = session.user.email;
-      login();
-    }
+    if (session) { document.getElementById('email').value = session.user.email; login(); }
   }
 
   function addProductField() {
@@ -220,23 +210,18 @@
     document.getElementById('products_list').insertAdjacentHTML('beforeend', html);
   }
 
-  function removeProduct(id) {
-    document.getElementById('prod_' + id).remove();
-    calcMusor();
-  }
+  function removeProduct(id) { document.getElementById('prod_' + id).remove(); calcMusor(); }
 
   function calcMusor() {
     const syrye = parseFloat(document.getElementById('z_syrye_kg').value) || 0;
     let sumProducts = 0;
-    document.querySelectorAll('[id^="z_kg"]').forEach(input => {
-      if (!input.id.includes('syrye')) sumProducts += parseFloat(input.value) || 0;
-    });
+    document.querySelectorAll('[id^="z_kg"]').forEach(input => { if (!input.id.includes('syrye')) sumProducts += parseFloat(input.value) || 0; });
     const musor = +(syrye - sumProducts).toFixed(3);
     document.getElementById('raschet_musora').innerText = musor >= 0 ? `Отходы/потери: ${musor} кг` : 'Ошибка: больше чем взял';
   }
 
   async function loadPovarsForZadanie() {
-    const { data } = await db.from('clients').select().eq('org_id', currentOrgId);
+    const { data } = await db.from('clients').select('id, name').eq('org_id', currentOrgId);
     const select = document.getElementById('komu_povar');
     select.innerHTML = '';
     data.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
@@ -262,9 +247,7 @@
     const { error } = await db.from('sklad_zapisi').insert({ tovar: name, kg: kg, tip: 'приход', postavshik: postavshik, otvetstvenniy: currentUser.id, org_id: currentOrgId });
     if (error) return alert('Ошибка: ' + error.message);
     alert(`Приход сохранён: ${name} ${kg} кг`);
-    document.getElementById('tovar_name').value = '';
-    document.getElementById('tovar_kg').value = '';
-    document.getElementById('postavshik').value = '';
+    document.getElementById('tovar_name').value = ''; document.getElementById('tovar_kg').value = ''; document.getElementById('postavshik').value = '';
     showScreen('shef');
   }
 
@@ -291,8 +274,7 @@
     const { error } = await db.from('sklad_zapisi').insert({ tovar: name, kg: kg, tip: 'расход', otvetstvenniy: currentUser.id, org_id: currentOrgId });
     if (error) return alert('Ошибка: ' + error.message);
     alert(`Списано: ${name} ${kg} кг`);
-    document.getElementById('vzyal_tovar').value = '';
-    document.getElementById('vzyal_kg').value = '';
+    document.getElementById('vzyal_tovar').value = ''; document.getElementById('vzyal_kg').value = '';
     showScreen('povar');
   }
 
@@ -300,8 +282,7 @@
     const syrye = document.getElementById('z_syrye').value;
     const syrye_kg = parseFloat(document.getElementById('z_syrye_kg').value);
     if (!syrye || !syrye_kg) return alert('Заполни что взял и сколько');
-    let products = [];
-    let sumProducts = 0;
+    let products = []; let sumProducts = 0;
     for (let i = 1; i <= productCount; i++) {
       const nameInput = document.getElementById(`z_product${i}`);
       const kgInput = document.getElementById(`z_kg${i}`);
@@ -318,8 +299,7 @@
       await db.from('zagotovki').insert({ produkt: p.name, iz_syrya: `${syrye} ${syrye_kg}кг`, kolvo_kg: p.kg, sdelal_kto: currentUser.id, org_id: currentOrgId });
     }
     alert('Готово!');
-    document.getElementById('z_syrye').value = '';
-    document.getElementById('z_syrye_kg').value = '';
+    document.getElementById('z_syrye').value = ''; document.getElementById('z_syrye_kg').value = '';
     showScreen('povar');
   }
 
@@ -330,9 +310,7 @@
     if (data.length === 0) html += '<div class="card">Пока пусто</div>';
     else {
       html += '<div class="table-wrap"><table><tr><th>Продукт</th><th>Кол-во</th><th>Из чего</th><th>Кто</th><th>Дата</th></tr>';
-      data.forEach(z => {
-        html += `<tr><td>${z.produkt}</td><td class="kg">${z.kolvo_kg} кг</td><td>${z.iz_syrya}</td><td>${z.sdelal_kto}</td><td>${new Date(z.created_at).toLocaleString('ru-RU', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</td></tr>`;
-      });
+      data.forEach(z => { html += `<tr><td>${z.produkt}</td><td class="kg">${z.kolvo_kg} кг</td><td>${z.iz_syrya}</td><td>${z.sdelal_kto}</td><td>${new Date(z.created_at).toLocaleString('ru-RU')}</td></tr>`; });
       html += '</table></div>';
     }
     document.getElementById('shef_zagotovki').innerHTML = html + '<button class="btn btn-grey" onclick="showScreen(\'shef\')">НАЗАД</button>';
@@ -390,7 +368,6 @@
 
   function startInventarizatsiya() { alert('Функция в разработке'); }
   function pokazatMesyacnyyOtchet() { alert('Функция в разработке'); }
-
 </script>
 </body>
-  </html>
+    </html>
