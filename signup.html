@@ -128,7 +128,6 @@ try {
           .single();
         if (orgError) throw orgError;
         final_org_id = org.id;
-        msg.textContent = 'Организация создана. Код: ' + org.invite_code;
       } else {
         const { data: org, error: orgError } = await supabase
           .from('organizations')
@@ -146,9 +145,15 @@ try {
       });
       if (membError) throw membError;
 
-      msg.textContent = 'Готово! Перенаправляю на вход...';
-      msg.style.color = '#4caf50';
-      setTimeout(() => window.location.href = 'index.html', 1500);
+      if (role === 'owner') {
+        msg.textContent = 'Готово! Перенаправляю в кабинет шефа...';
+        msg.style.color = '#4caf50';
+        setTimeout(() => window.location.href = 'chef.html', 1500);
+      } else {
+        msg.textContent = 'Готово! Перенаправляю на вход...';
+        msg.style.color = '#4caf50';
+        setTimeout(() => window.location.href = 'index.html', 1500);
+      }
 
     } catch (err) {
       msg.textContent = 'Ошибка: ' + err.message;
@@ -166,4 +171,4 @@ try {
 }
 </script>
 </body>
-</html>
+  </html>
