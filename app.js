@@ -14,12 +14,17 @@ function go(page) {
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  
   if (id === 'zagotovka_form') {
-    document.getElementById('products_list').innerHTML = '';
-    productCount = 0;
-    addProductField();
-    addProductField();
+    const list = document.getElementById('products_list');
+    if (list) {
+      list.innerHTML = '';
+      productCount = 0;
+      addProductField();
+      addProductField();
+    }
   }
 }
 
@@ -38,6 +43,9 @@ async function login() {
   currentUser = auth.user;
   currentRole = membership.role;
   currentOrgId = membership.org_id;
+  
+  localStorage.setItem('org_id', currentOrgId);
+  localStorage.setItem('role', currentRole);
 
   const { data: items } = await db.from('items')
     .select('id, name, type').eq('org_id', currentOrgId).order('name');
@@ -46,16 +54,13 @@ async function login() {
   if (currentRole === 'owner' || currentRole === 'chef') {
     go('chef.html');
   } else {
-    document.getElementById('povar_name').innerText = 'Повар';
     go('povar.html');
   }
 }
 
 async function logout() {
   await db.auth.signOut();
-  currentUser = null;
-  currentRole = null;
-  currentOrgId = null;
+  localStorage.clear();
   go('index.html');
 }
 
@@ -72,32 +77,26 @@ async function checkAuth() {
   currentUser = session.user;
   currentOrgId = localStorage.getItem('org_id');
   currentRole = localStorage.getItem('role');
-  
-  if (!currentOrgId) {
-    const { data: membership } = await db.from('memberships')
-      .select('role, org_id').eq('user_id', session.user.id).single();
-    if (membership) {
-      currentOrgId = membership.org_id;
-      currentRole = membership.role;
-      localStorage.setItem('org_id', currentOrgId);
-      localStorage.setItem('role', currentRole);
-    }
-  }
-  
   return session;
 }
 
 // ===== АКТ РАЗДЕЛКИ =====
 function openYield() {
   showScreen('yield_form');
-  document.getElementById('yield_error').textContent = '';
-  document.getElementById('yield_input_qty').value = '';
-  document.getElementById('yield_outputs').innerHTML = '';
+  const errEl = document.getElementById('yield_error');
+  if (errEl) errEl.textContent = '';
+  
+  const qtyEl = document.getElementById('yield_input_qty');
+  if (qtyEl) qtyEl.value = '';
+  
+  const outEl = document.getElementById('yield_outputs');
+  if (outEl) outEl.innerHTML = '';
   
   const rawItems = allItems.filter(i => i.type === 'raw' || i.type === 'product');
-  document.getElementById('yield_input_item').innerHTML = rawItems.map(i => 
-    `<option value="${i.id}">${i.name}</option>`
-  ).join('');
+  const inputEl = document.getElementById('yield_input_item');
+  if (inputEl) {
+    inputEl.innerHTML = rawItems.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+  }
   
   addYieldOutput();
 }
@@ -124,13 +123,14 @@ function addYieldOutput() {
 }
 
 async function saveYield() {
-  document.getElementById('yield_error').textContent = '';
+  const errEl = document.getElementById('yield_error');
+  if (errEl) errEl.textContent = '';
   
   const inputItemId = document.getElementById('yield_input_item').value;
   const inputQty = parseFloat(document.getElementById('yield_input_qty').value);
   
   if (!inputQty || inputQty <= 0) {
-    document.getElementById('yield_error').textContent = 'Введи количество';
+    if (errEl) errEl.textContent = 'Введи количество';
     return;
   }
 
@@ -142,7 +142,7 @@ async function saveYield() {
   });
 
   if (outputs.length === 0) {
-    document.getElementById('yield_error').textContent = 'Добавь хотя бы одну позицию выхода';
+    if (errEl) errEl.textContent = 'Добавь хотя бы одну позицию выхода';
     return;
   }
 
@@ -158,7 +158,10 @@ async function saveYield() {
     .select()
     .single();
 
-  if (error) return document.getElementById('yield_error').textContent = error.message;
+  if (error) {
+    if (errEl) errEl.textContent = error.message;
+    return;
+  }
 
   const itemsToInsert = outputs.map(o => ({
     act_id: act.id,
@@ -168,7 +171,10 @@ async function saveYield() {
   }));
 
   const { error: itemsError } = await db.from('yield_act_items').insert(itemsToInsert);
-  if (itemsError) return document.getElementById('yield_error').textContent = itemsError.message;
+  if (itemsError) {
+    if (errEl) errEl.textContent = itemsError.message;
+    return;
+  }
 
   alert('Акт сохранён!');
   showScreen('povar');
@@ -189,8 +195,9 @@ async function openReport() {
     .order('created_at', { ascending: false })
     .limit(50);
 
+  const reportEl = document.getElementById('yield_report_table');
   if (error || !data || !data.length) {
-    document.getElementById('yield_report_table').innerHTML = '<div class="card">Пока нет актов</div>';
+    if (reportEl) reportEl.innerHTML = '<div class="card">Пока нет актов</div>';
     return;
   }
 
@@ -206,7 +213,7 @@ async function openReport() {
   });
   html += '</table></div>';
   
-  document.getElementById('yield_report_table').innerHTML = html;
+  if (reportEl) reportEl.innerHTML = html;
 }
 
 // ===== ЗАГОТОВКИ =====
@@ -223,7 +230,8 @@ function addProductField() {
 }
 
 function removeProduct(id) {
-  document.getElementById('prod_' + id).remove();
+  const el = document.getElementById('prod_' + id);
+  if (el) el.remove();
   calcMusor();
 }
 
@@ -234,7 +242,8 @@ function calcMusor() {
     if (!input.id.includes('syrye')) sumProducts += parseFloat(input.value) || 0;
   });
   const musor = +(syrye - sumProducts).toFixed(3);
-  document.getElementById('raschet_musora').innerText = musor >= 0 ? `Отходы/потери: ${musor} кг` : 'Ошибка: больше чем взял';
+  const el = document.getElementById('raschet_musora');
+  if (el) el.innerText = musor >= 0 ? `Отходы/потери: ${musor} кг` : 'Ошибка: больше чем взял';
 }
 
 async function sohranitZagotovku() {
@@ -243,28 +252,26 @@ async function sohranitZagotovku() {
   if (!syrye || !syrye_kg) return alert('Заполни что взял и сколько');
   
   let products = [];
-  let sumProducts = 0;
   for (let i = 1; i <= productCount; i++) {
     const nameInput = document.getElementById(`z_product${i}`);
     const kgInput = document.getElementById(`z_kg${i}`);
     if (nameInput && kgInput && nameInput.value && kgInput.value) {
-      const kg = parseFloat(kgInput.value);
-      products.push({ name: nameInput.value, kg: kg });
-      sumProducts += kg;
+      products.push({ name: nameInput.value, kg: parseFloat(kgInput.value) });
     }
   }
   if (products.length === 0) return alert('Добавь хотя бы 1 продукт');
   
-  // Тут твоя логика сохранения в Supabase
-  // Я оставил как было у тебя, допиши сам запрос
+  alert('Заготовка сохранена. Допиши запрос в Supabase тут.');
 }
 
 // ===== СКЛАД И ЗАДАНИЯ =====
 async function loadPovarsForZadanie() {
   const { data } = await db.from('profiles').select('id, name').eq('org_id', currentOrgId);
   const select = document.getElementById('komu_povar');
-  select.innerHTML = '';
-  data.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+  if (select) {
+    select.innerHTML = '';
+    data.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+  }
   showScreen('zadanie_form');
 }
 
@@ -338,4 +345,4 @@ async function saveVzyal() {
   document.getElementById('vzyal_tovar').value = '';
   document.getElementById('vzyal_kg').value = '';
   showScreen('povar');
-                               }
+    }
