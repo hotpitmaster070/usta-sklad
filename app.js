@@ -345,4 +345,4 @@ async function saveVzyal() {
   document.getElementById('vzyal_tovar').value = '';
   document.getElementById('vzyal_kg').value = '';
   showScreen('povar');
-    }
+  }
