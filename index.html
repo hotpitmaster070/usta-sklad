@@ -22,6 +22,9 @@
     .kg { text-align: right; font-weight: bold; }
     .card { background: #2c2c2e; padding: 15px; border-radius: 12px; margin: 10px 0; }
     .table-wrap { overflow-x: auto; }
+    .row { display: flex; gap: 8px; margin-top: 10px; }
+    .row > div { flex: 1; }
+    .error { color: #ff3b30; text-align: center; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -44,7 +47,46 @@
   <button class="btn" onclick="pokazatOtchetSpisanie()">7. [ОТЧЁТ ПО СПИСАНИЮ]</button>
   <button class="btn" onclick="pokazatMesyacnyyOtchet()">8. [ОТЧЁТ ЗА МЕСЯЦ]</button>
   <button class="btn" onclick="startInventarizatsiya()">9. [ИНВЕНТАРИЗАЦИЯ]</button>
+  <button class="btn btn-green" onclick="openReport()">11. [ОТЧЁТ ПО РАЗДЕЛКЕ]</button>
   <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
+</div>
+
+<div id="povar" class="screen">
+  <h1 id="povar_name"></h1>
+  <button class="btn" onclick="showScreen('vzyal_form')">ВЗЯЛ СО СКЛАДА</button>
+  <button class="btn" onclick="loadMoiZadaniya('active')" style="position:relative">
+    МОИ ЗАДАНИЯ
+    <span id="zadanieBadge" style="display:none; position:absolute; right:15px; top:50%; transform:translateY(-50%); background:#ff3b30; color:#fff; border-radius:50%; padding:2px 8px; font-size:14px; font-weight:bold;"></span>
+  </button>
+  <button class="btn" onclick="showScreen('zagotovka_form')">СДЕЛАТЬ ЗАГОТОВКУ</button>
+  <button class="btn btn-green" onclick="openYield()">10. [АКТ РАЗДЕЛКИ]</button>
+  <button class="btn btn-grey" onclick="showScreen('spisanie_form')">СПИСАНИЕ</button>
+  <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
+</div>
+
+<!-- Новый экран: Акт разделки -->
+<div id="yield_form" class="screen">
+  <h2>Акт разделки</h2>
+  <label>Что разделывал:</label>
+  <select id="yield_input_item"></select>
+  
+  <label>Количество, кг:</label>
+  <input id="yield_input_qty" type="number" step="0.01" placeholder="10.5">
+
+  <label>Получил:</label>
+  <div id="yield_outputs"></div>
+  <button class="btn btn-grey" onclick="addYieldOutput()">+ ДОБАВИТЬ ПОЗИЦИЮ</button>
+
+  <button class="btn btn-green" onclick="saveYield()">СОХРАНИТЬ</button>
+  <button class="btn btn-secondary" onclick="showScreen('povar')">НАЗАД</button>
+  <div class="error" id="yield_error"></div>
+</div>
+
+<!-- Новый экран: Отчёт по разделке -->
+<div id="yield_report" class="screen">
+  <h2>Отчёт по разделке</h2>
+  <div id="yield_report_table"></div>
+  <button class="btn btn-secondary" onclick="showScreen('shef')">НАЗАД</button>
 </div>
 
 <div id="zadanie_form" class="screen">
@@ -73,18 +115,6 @@
   <input id="postavshik" placeholder="Мясной двор" />
   <button class="btn btn-green" onclick="savePrihod()">СОХРАНИТЬ ПРИХОД</button>
   <button class="btn btn-grey" onclick="showScreen('shef')">НАЗАД</button>
-</div>
-
-<div id="povar" class="screen">
-  <h1 id="povar_name"></h1>
-  <button class="btn" onclick="showScreen('vzyal_form')">ВЗЯЛ СО СКЛАДА</button>
-  <button class="btn" onclick="loadMoiZadaniya('active')" style="position:relative">
-    МОИ ЗАДАНИЯ
-    <span id="zadanieBadge" style="display:none; position:absolute; right:15px; top:50%; transform:translateY(-50%); background:#ff3b30; color:#fff; border-radius:50%; padding:2px 8px; font-size:14px; font-weight:bold;"></span>
-  </button>
-  <button class="btn" onclick="showScreen('zagotovka_form')">СДЕЛАТЬ ЗАГОТОВКУ</button>
-  <button class="btn btn-grey" onclick="showScreen('spisanie_form')">СПИСАНИЕ</button>
-  <button class="btn btn-grey" onclick="logout()">ВЫЙТИ</button>
 </div>
 
 <div id="zagotovka_form" class="screen">
@@ -166,6 +196,7 @@
   let currentRole = null;
   let currentOrgId = null;
   let productCount = 0;
+  let allItems = [];
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -189,6 +220,10 @@
     currentUser = auth.user;
     currentRole = membership.role;
     currentOrgId = membership.org_id;
+
+    const { data: items } = await db.from('items').select('id, name, type').eq('org_id', currentOrgId).order('name');
+    allItems = items || [];
+
     if (currentRole === 'owner' || currentRole === 'chef') showScreen('shef');
     else { document.getElementById('povar_name').innerText = 'Повар'; showScreen('povar'); }
   }
@@ -200,10 +235,133 @@
   }
 
   window.onload = async () => {
-    const { data: { session } } = await db.auth.getSession();
+    const { data: { session } = await db.auth.getSession();
     if (session) { document.getElementById('email').value = session.user.email; login(); }
   }
 
+  // ===== НОВОЕ: АКТ РАЗДЕЛКИ =====
+  function openYield() {
+    showScreen('yield_form');
+    document.getElementById('yield_error').textContent = '';
+    document.getElementById('yield_input_qty').value = '';
+    document.getElementById('yield_outputs').innerHTML = '';
+    
+    const rawItems = allItems.filter(i => i.type === 'raw' || i.type === 'product');
+    document.getElementById('yield_input_item').innerHTML = rawItems.map(i => 
+      `<option value="${i.id}">${i.name}</option>`
+    ).join('');
+    
+    addYieldOutput();
+  }
+
+  function addYieldOutput() {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div class="row">
+        <div>
+          <label>Продукт:</label>
+          <select class="yield_output_item">
+            ${allItems.map(i => `<option value="${i.id}">${i.name}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label>Кг:</label>
+          <input type="number" class="yield_output_qty" step="0.01" placeholder="0.5">
+        </div>
+      </div>
+      <button class="btn btn-grey" style="margin-top:10px" onclick="this.parentElement.remove()">УДАЛИТЬ</button>
+    `;
+    document.getElementById('yield_outputs').appendChild(div);
+  }
+
+  async function saveYield() {
+    document.getElementById('yield_error').textContent = '';
+    
+    const inputItemId = document.getElementById('yield_input_item').value;
+    const inputQty = parseFloat(document.getElementById('yield_input_qty').value);
+    
+    if (!inputQty || inputQty <= 0) {
+      document.getElementById('yield_error').textContent = 'Введи количество';
+      return;
+    }
+
+    const outputs = [];
+    document.querySelectorAll('#yield_outputs .card').forEach(div => {
+      const itemId = div.querySelector('.yield_output_item').value;
+      const qty = parseFloat(div.querySelector('.yield_output_qty').value);
+      if (qty > 0) outputs.push({ item_id: itemId, qty });
+    });
+
+    if (outputs.length === 0) {
+      document.getElementById('yield_error').textContent = 'Добавь хотя бы одну позицию выхода';
+      return;
+    }
+
+    const { data: act, error } = await db
+      .from('yield_acts')
+      .insert({
+        org_id: currentOrgId,
+        input_item_id: inputItemId,
+        input_qty: inputQty,
+        act_date: new Date().toISOString().split('T')[0],
+        done_by: currentUser.id
+      })
+      .select()
+      .single();
+
+    if (error) return document.getElementById('yield_error').textContent = error.message;
+
+    const itemsToInsert = outputs.map(o => ({
+      act_id: act.id,
+      item_id: o.item_id,
+      qty: o.qty,
+      is_waste: false
+    }));
+
+    const { error: itemsError } = await db.from('yield_act_items').insert(itemsToInsert);
+    if (itemsError) return document.getElementById('yield_error').textContent = itemsError.message;
+
+    alert('Акт сохранён!');
+    showScreen('povar');
+  }
+
+  async function openReport() {
+    showScreen('yield_report');
+    
+    const { data, error } = await db
+      .from('yield_acts')
+      .select(`
+        id, act_date,
+        input_item:items!yield_acts_input_item_id_fkey(name),
+        done_by_profile:profiles!yield_acts_done_by_fkey(name),
+        items:yield_act_items(qty, item:items(name))
+      `)
+      .eq('org_id', currentOrgId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error || !data || !data.length) {
+      document.getElementById('yield_report_table').innerHTML = '<div class="card">Пока нет актов</div>';
+      return;
+    }
+
+    let html = '<div class="table-wrap"><table><tr><th>Дата</th><th>Повар</th><th>Вход</th><th>Выход</th></tr>';
+    data.forEach(act => {
+      const outputs = act.items.map(i => `${i.item.name} ${i.qty}кг`).join(', ');
+      html += `<tr>
+        <td>${new Date(act.act_date).toLocaleDateString('ru')}</td>
+        <td>${act.done_by_profile?.name || '—'}</td>
+        <td>${act.input_item.name}</td>
+        <td>${outputs}</td>
+      </tr>`;
+    });
+    html += '</table></div>';
+    
+    document.getElementById('yield_report_table').innerHTML = html;
+  }
+
+  // ===== ТВОИ СТАРЫЕ ФУНКЦИИ - НЕ ТРОГАЛ =====
   function addProductField() {
     productCount++;
     const html = `<div class="card" id="prod_${productCount}" style="margin-top:10px; position:relative;"><button onclick="removeProduct(${productCount})" style="position:absolute; right:10px; top:10px; background:#ff3b30; border:none; color:#fff; border-radius:50%; width:25px; height:25px; font-size:16px;">×</button><label>Продукт ${productCount}:</label><input type="text" id="z_product${productCount}" placeholder="Название продукта"><label>Сколько кг:</label><input type="number" id="z_kg${productCount}" placeholder="0.00" step="0.01" oninput="calcMusor()"></div>`;
@@ -221,11 +379,11 @@
   }
 
   async function loadPovarsForZadanie() {
-  const { data } = await db.from('clients').select('id, name').eq('org_id', currentOrgId);
-  const select = document.getElementById('komu_povar');
-  select.innerHTML = '';
-  data.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
-  showScreen('zadanie_form');
+    const { data } = await db.from('profiles').select('id, name').eq('org_id', currentOrgId);
+    const select = document.getElementById('komu_povar');
+    select.innerHTML = '';
+    data.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+    showScreen('zadanie_form');
   }
 
   async function saveZadanie() {
@@ -370,4 +528,4 @@
   function pokazatMesyacnyyOtchet() { alert('Функция в разработке'); }
 </script>
 </body>
-      </html>
+</html> 
