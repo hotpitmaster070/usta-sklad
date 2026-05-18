@@ -145,6 +145,13 @@ try {
       });
       if (membError) throw membError;
 
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: userId,
+        name: name,
+        email: email
+      });
+      if (profileError) throw profileError;
+
       if (role === 'owner') {
         msg.textContent = 'Готово! Перенаправляю в кабинет шефа...';
         msg.style.color = '#4caf50';
