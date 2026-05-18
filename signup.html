@@ -62,120 +62,74 @@
   </div>
 
 <script>
-try {
-  if (!window.supabase) {
-    throw new Error('Supabase не загрузился. Проверь интернет');
+const supabase = window.supabase.createClient(
+  'https://xljogkyropyocvuuodfl.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'
+);
+
+document.getElementById('role').onchange = (e) => {
+  if (e.target.value === 'owner') {
+    document.getElementById('restaurant_block').style.display = 'block';
+    document.getElementById('invite_block').style.display = 'none';
+  } else {
+    document.getElementById('restaurant_block').style.display = 'none';
+    document.getElementById('invite_block').style.display = 'block';
   }
+};
 
-  const supabase = window.supabase.createClient(
-    'https://xljogkyropyocvuuodfl.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsam9na3lyb3B5b2N2dXVvZGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODA5MjgsImV4cCI6MjA5Mzg1NjkyOH0.e7m1owNpYoqTpnGRKeEiMlTAIp0T0bAe28v6MX-MyVs'
-  );
-
-  document.getElementById('role').onchange = (e) => {
-    if (e.target.value === 'owner') {
-      document.getElementById('restaurant_block').style.display = 'block';
-      document.getElementById('invite_block').style.display = 'none';
-    } else {
-      document.getElementById('restaurant_block').style.display = 'none';
-      document.getElementById('invite_block').style.display = 'block';
-    }
-  };
-
-  document.getElementById('btn').addEventListener('click', async () => {
-    const btn = document.getElementById('btn');
-    const msg = document.getElementById('msg');
-    btn.disabled = true;
-    msg.textContent = 'Регистрирую...';
-    msg.style.color = '#aaa';
-
-    try {
-      const role = document.getElementById('role').value;
-      const restaurant = document.getElementById('restaurant').value.trim();
-      const invite_code = document.getElementById('invite_code').value.trim().toUpperCase();
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-
-      if (!email || !password || !name) {
-        throw new Error('Заполни имя, email и пароль');
-      }
-      if (password.length < 6) {
-        throw new Error('Пароль минимум 6 символов');
-      }
-      if (role === 'owner' && !restaurant) {
-        throw new Error('Введи название ресторана');
-      }
-      if (role === 'povar' && !invite_code) {
-        throw new Error('Введи код приглашения');
-      }
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: { data: { name: name } }
-      });
-      if (authError) throw authError;
-      
-      const userId = authData.user.id;
-      let final_org_id;
-
-      if (role === 'owner') {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .insert({ name: restaurant })
-          .select()
-          .single();
-        if (orgError) throw orgError;
-        final_org_id = org.id;
-      } else {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('invite_code', invite_code)
-          .single();
-        if (orgError || !org) throw new Error('Неверный код приглашения');
-        final_org_id = org.id;
-      }
-
-      const { error: membError } = await supabase.from('memberships').insert({
-        user_id: userId,
-        org_id: final_org_id,
-        role: role
-      });
-      if (membError) throw membError;
-
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: userId,
-        name: name,
-        email: email
-      });
-      if (profileError) throw profileError;
-
-      if (role === 'owner') {
-        msg.textContent = 'Готово! Перенаправляю в кабинет шефа...';
-        msg.style.color = '#4caf50';
-        setTimeout(() => window.location.href = 'chef.html', 1500);
-      } else {
-        msg.textContent = 'Готово! Перенаправляю на вход...';
-        msg.style.color = '#4caf50';
-        setTimeout(() => window.location.href = 'index.html', 1500);
-      }
-
-    } catch (err) {
-      msg.textContent = 'Ошибка: ' + err.message;
-      msg.style.color = '#ff3b30';
-      btn.disabled = false;
-    }
-  });
-
-} catch (e) {
+document.getElementById('btn').addEventListener('click', async () => {
+  const btn = document.getElementById('btn');
   const msg = document.getElementById('msg');
-  if (msg) {
-    msg.textContent = 'Критическая ошибка: ' + e.message;
+  btn.disabled = true;
+  msg.textContent = 'Регистрирую...';
+  msg.style.color = '#aaa';
+
+  try {
+    const role = document.getElementById('role').value;
+    const restaurant = document.getElementById('restaurant').value.trim();
+    const invite_code = document.getElementById('invite_code').value.trim().toUpperCase();
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password || !name) throw new Error('Заполни имя, email и пароль');
+    if (password.length < 6) throw new Error('Пароль минимум 6 символов');
+    if (role === 'owner' && !restaurant) throw new Error('Введи название ресторана');
+    if (role === 'povar' && !invite_code) throw new Error('Введи код приглашения');
+
+    // 1. Регистрируем юзера
+    const { data: authData, error: authError } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: { 
+        data: { 
+          name: name,
+          restaurant_name: role === 'owner' ? restaurant : null
+        } 
+      }
+    });
+    if (authError) throw authError;
+
+    // 2. Если повар - присоединяем к организации по коду
+    if (role === 'povar') {
+      const { error: rpcError } = await supabase.rpc('join_org_by_code', { code: invite_code });
+      if (rpcError) throw rpcError;
+      
+      msg.textContent = 'Готово! Перенаправляю на вход...';
+      msg.style.color = '#4caf50';
+      setTimeout(() => window.location.href = 'index.html', 1500);
+    } else {
+      msg.textContent = 'Готово! Проверь почту и войди в систему.';
+      msg.style.color = '#4caf50';
+      setTimeout(() => window.location.href = 'index.html', 2000);
+    }
+
+  } catch (err) {
+    msg.textContent = 'Ошибка: ' + err.message;
     msg.style.color = '#ff3b30';
+    btn.disabled = false;
   }
-}
+});
 </script>
 </body>
-  </html>
+</html>
