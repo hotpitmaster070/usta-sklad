@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <h2>${org.name}</h2>
         <div class="info">Код приглашения для поваров:</div>
         <div class="code-box">${org.invite_code}</div>
+        <div class="info">Дай этот код повару для регистрации</div>
         <button class="whatsapp" onclick="inviteWhatsApp('${org.name}', '${org.invite_code}')">Пригласить в WhatsApp</button>
         <button class="secondary" onclick="copyCode('${org.invite_code}')">Скопировать код</button>
         
@@ -109,7 +110,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const text = encodeURIComponent(
       `Привет! Заходи работать в ${restaurantName}.\n` +
       `1. Открой ссылку: https://hotpitmaster070.github.io/usta-sklad/signup.html\n` +
-      `2. Введи код: ${code}`
+      `2. Выбери роль "Повар"\n` +
+      `3. Введи код: ${code}`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
