@@ -236,7 +236,10 @@
 
   window.onload = async () => {
     const { data: { session } = await db.auth.getSession();
-    if (session) { document.getElementById('email').value = session.user.email; login(); }
+    if (session) { 
+      document.getElementById('email').value = session.user.email; 
+      await login(); 
+    }
   }
 
   // ===== НОВОЕ: АКТ РАЗДЕЛКИ =====
