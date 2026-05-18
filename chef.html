@@ -11,6 +11,7 @@ h2{margin:0 0 20px;text-align:center}
 .code-box{background:#1a1a1a;padding:15px;border-radius:8px;text-align:center;font-size:32px;letter-spacing:4px;margin:15px 0;border:1px solid #4caf50}
 button{width:100%;padding:14px;border:none;border-radius:8px;background:#4caf50;color:#fff;font-size:16px;cursor:pointer;margin-top:10px}
 button.secondary{background:#333}
+button.whatsapp{background:#25D366}
 .info{font-size:14px;color:#aaa;text-align:center;margin-top:10px}
 .chef-list{margin-top:20px;border-top:1px solid #444;padding-top:15px}
 .chef-item{background:#1a1a1a;padding:10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between}
@@ -74,8 +75,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         <h2>${org.name}</h2>
         <div class="info">Код приглашения для поваров:</div>
         <div class="code-box">${org.invite_code}</div>
-        <button onclick="copyCode('${org.invite_code}')">Скопировать код</button>
-        <button class="secondary" onclick="shareCode('${org.name}', '${org.invite_code}')">Поделиться кодом</button>
+        <button class="whatsapp" onclick="inviteWhatsApp('${org.name}', '${org.invite_code}')">Пригласить в WhatsApp</button>
+        <button class="secondary" onclick="copyCode('${org.invite_code}')">Скопировать код</button>
         
         <div class="chef-list">
           <div class="info" style="margin-bottom:10px;">Повара в организации: ${chefs ? chefs.length : 0}</div>
@@ -89,27 +90,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  window.inviteWhatsApp = function(restaurantName, code) {
+    const text = encodeURIComponent(
+      `Привет! Заходи работать в ${restaurantName}.\n` +
+      `1. Открой ссылку: https://bitmaster070.github.io/signup.html\n` +
+      `2. Выбери роль "Повар"\n` +
+      `3. Введи код: ${code}`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+
   window.copyCode = function(code) {
     navigator.clipboard.writeText(code);
     alert('Код скопирован!');
-  }
-
-  window.shareCode = async function(restaurantName, code) {
-    const text = `Привет! Заходи работать в ${restaurantName}.\nСкачай приложение, выбери "Повар" и введи код: ${code}\nСсылка: https://bitmaster070.github.io/signup.html`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Приглашение в ' + restaurantName,
-          text: text
-        });
-      } catch (e) {
-        console.log('Share cancelled');
-      }
-    } else {
-      navigator.clipboard.writeText(text);
-      alert('Текст скопирован! Отправь повару в WhatsApp');
-    }
   }
 
   window.logout = async function() {
