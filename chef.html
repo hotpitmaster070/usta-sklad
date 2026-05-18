@@ -14,7 +14,9 @@ button.secondary{background:#333}
 button.whatsapp{background:#25D366}
 .info{font-size:14px;color:#aaa;text-align:center;margin-top:10px}
 .chef-list{margin-top:20px;border-top:1px solid #444;padding-top:15px}
-.chef-item{background:#1a1a1a;padding:10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between}
+.chef-item{background:#1a1a1a;padding:12px;border-radius:8px;margin-bottom:8px}
+.chef-name{font-size:16px;font-weight:600}
+.chef-email{font-size:13px;color:#aaa;margin-top:4px}
 .error{color:#ff3b30;text-align:center;margin-top:10px}
 </style>
 </head>
@@ -64,12 +66,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         .eq('org_id', membership.org_id)
         .eq('role', 'povar');
 
-      let chefsHtml = chefs && chefs.length ? chefs.map(c => `
-        <div class="chef-item">
-          <span>Повар</span>
-          <span style="color:#aaa;font-size:12px">${c.user_id.slice(0,8)}...</span>
-        </div>
-      `).join('') : '<div class="info">Пока нет поваров</div>';
+      let chefsHtml = '<div class="info">Пока нет поваров</div>';
+      
+      if (chefs && chefs.length) {
+        const userIds = chefs.map(c => c.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .in('id', userIds);
+
+        chefsHtml = chefs.map(c => {
+          const profile = profiles?.find(p => p.id === c.user_id);
+          return `
+            <div class="chef-item">
+              <div class="chef-name">${profile?.name || 'Без имени'}</div>
+              <div class="chef-email">${profile?.email || c.user_id.slice(0,8) + '...'}</div>
+            </div>
+          `;
+        }).join('');
+      }
 
       document.getElementById('app').innerHTML = `
         <h2>${org.name}</h2>
