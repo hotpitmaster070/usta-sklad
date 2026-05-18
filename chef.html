@@ -30,58 +30,60 @@ const supabase = window.supabase.createClient(
 );
 
 async function load() {
-  const { data: { user } = await supabase.auth.getUser();
-  if (!user) {
-    window.location.href = 'index.html';
-    return;
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    const { data: membership, error: membError } = await supabase
+      .from('memberships')
+      .select('org_id, role')
+      .eq('user_id', user.id)
+      .eq('role', 'owner')
+      .single();
+
+    if (membError || !membership) {
+      document.getElementById('app').innerHTML = '<h2>Доступ только для шефа</h2><button onclick="logout()">Выйти</button>';
+      return;
+    }
+
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('name, invite_code')
+      .eq('id', membership.org_id)
+      .single();
+
+    const { data: chefs } = await supabase
+      .from('memberships')
+      .select('user_id, role')
+      .eq('org_id', membership.org_id)
+      .eq('role', 'povar');
+
+    let chefsHtml = chefs && chefs.length ? chefs.map(c => `
+      <div class="chef-item">
+        <span>Повар</span>
+        <span style="color:#aaa;font-size:12px">${c.user_id.slice(0,8)}...</span>
+      </div>
+    `).join('') : '<div class="info">Пока нет поваров</div>';
+
+    document.getElementById('app').innerHTML = `
+      <h2>${org.name}</h2>
+      <div class="info">Код приглашения для поваров:</div>
+      <div class="code-box">${org.invite_code}</div>
+      <button onclick="copyCode('${org.invite_code}')">Скопировать код</button>
+      
+      <div class="chef-list">
+        <div class="info" style="margin-bottom:10px;">Повара в организации: ${chefs ? chefs.length : 0}</div>
+        ${chefsHtml}
+      </div>
+
+      <button class="secondary" onclick="logout()">Выйти</button>
+    `;
+  } catch (e) {
+    document.getElementById('app').innerHTML = `<h2>Ошибка</h2><div class="error">${e.message}</div>`;
   }
-
-  // Проверяем что это шеф
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('org_id, role')
-    .eq('user_id', user.id)
-    .eq('role', 'owner')
-    .single();
-
-  if (!membership) {
-    document.getElementById('app').innerHTML = '<h2>Доступ только для шефа</h2><button onclick="logout()">Выйти</button>';
-    return;
-  }
-
-  // Грузим организацию и поваров
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('name, invite_code')
-    .eq('id', membership.org_id)
-    .single();
-
-  const { data: chefs } = await supabase
-    .from('memberships')
-    .select('user_id, role')
-    .eq('org_id', membership.org_id)
-    .eq('role', 'povar');
-
-  let chefsHtml = chefs.length ? chefs.map(c => `
-    <div class="chef-item">
-      <span>Повар</span>
-      <span style="color:#aaa;font-size:12px">${c.user_id.slice(0,8)}...</span>
-    </div>
-  `).join('') : '<div class="info">Пока нет поваров</div>';
-
-  document.getElementById('app').innerHTML = `
-    <h2>${org.name}</h2>
-    <div class="info">Код приглашения для поваров:</div>
-    <div class="code-box">${org.invite_code}</div>
-    <button onclick="copyCode('${org.invite_code}')">Скопировать код</button>
-    
-    <div class="chef-list">
-      <div class="info" style="margin-bottom:10px;">Повара в организации: ${chefs.length}</div>
-      ${chefsHtml}
-    </div>
-
-    <button class="secondary" onclick="logout()">Выйти</button>
-  `;
 }
 
 function copyCode(code) {
@@ -97,4 +99,4 @@ async function logout() {
 load();
 </script>
 </body>
-  </html>
+</html>
