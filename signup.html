@@ -42,9 +42,9 @@
         <input id="restaurant" type="text" placeholder="Шашлычная №1">
       </div>
 
-      <div id="org_block" style="display:none;">
-        <label>ID организации шефа</label>
-        <input id="org_id" type="text" placeholder="Вставь ID от шефа">
+      <div id="invite_block" style="display:none;">
+        <label>Код приглашения</label>
+        <input id="invite_code" type="text" placeholder="A7B3K9" style="text-transform:uppercase">
       </div>
 
       <label>Имя</label>
@@ -75,10 +75,10 @@ try {
   document.getElementById('role').onchange = (e) => {
     if (e.target.value === 'owner') {
       document.getElementById('restaurant_block').style.display = 'block';
-      document.getElementById('org_block').style.display = 'none';
+      document.getElementById('invite_block').style.display = 'none';
     } else {
       document.getElementById('restaurant_block').style.display = 'none';
-      document.getElementById('org_block').style.display = 'block';
+      document.getElementById('invite_block').style.display = 'block';
     }
   };
 
@@ -92,7 +92,7 @@ try {
     try {
       const role = document.getElementById('role').value;
       const restaurant = document.getElementById('restaurant').value.trim();
-      const org_id = document.getElementById('org_id').value.trim();
+      const invite_code = document.getElementById('invite_code').value.trim().toUpperCase();
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
@@ -106,8 +106,8 @@ try {
       if (role === 'owner' && !restaurant) {
         throw new Error('Введи название ресторана');
       }
-      if (role === 'povar' && !org_id) {
-        throw new Error('Вставь ID организации');
+      if (role === 'povar' && !invite_code) {
+        throw new Error('Введи код приглашения');
       }
 
       const { data: authData, error: authError } = await supabase.auth.signUp({ 
@@ -118,7 +118,7 @@ try {
       if (authError) throw authError;
       
       const userId = authData.user.id;
-      let final_org_id = org_id;
+      let final_org_id;
 
       if (role === 'owner') {
         const { data: org, error: orgError } = await supabase
@@ -128,7 +128,15 @@ try {
           .single();
         if (orgError) throw orgError;
         final_org_id = org.id;
-        msg.textContent = 'Организация создана. ID: ' + final_org_id;
+        msg.textContent = 'Организация создана. Код: ' + org.invite_code;
+      } else {
+        const { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('invite_code', invite_code)
+          .single();
+        if (orgError || !org) throw new Error('Неверный код приглашения');
+        final_org_id = org.id;
       }
 
       const { error: membError } = await supabase.from('memberships').insert({
@@ -158,4 +166,4 @@ try {
 }
 </script>
 </body>
-  </html>
+</html>
