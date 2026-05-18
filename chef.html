@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="info">Код приглашения для поваров:</div>
         <div class="code-box">${org.invite_code}</div>
         <button onclick="copyCode('${org.invite_code}')">Скопировать код</button>
+        <button class="secondary" onclick="shareCode('${org.name}', '${org.invite_code}')">Поделиться кодом</button>
         
         <div class="chef-list">
           <div class="info" style="margin-bottom:10px;">Повара в организации: ${chefs ? chefs.length : 0}</div>
@@ -91,6 +92,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.copyCode = function(code) {
     navigator.clipboard.writeText(code);
     alert('Код скопирован!');
+  }
+
+  window.shareCode = async function(restaurantName, code) {
+    const text = `Привет! Заходи работать в ${restaurantName}.\nСкачай приложение, выбери "Повар" и введи код: ${code}\nСсылка: https://bitmaster070.github.io/signup.html`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Приглашение в ' + restaurantName,
+          text: text
+        });
+      } catch (e) {
+        console.log('Share cancelled');
+      }
+    } else {
+      navigator.clipboard.writeText(text);
+      alert('Текст скопирован! Отправь повару в WhatsApp');
+    }
   }
 
   window.logout = async function() {
